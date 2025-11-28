@@ -1,184 +1,207 @@
 module community_budget::governance {
-    use sui::object::{Self as Object, UID, ID};
-    use sui::tx_context::{Self as Tx, TxContext};
+    use sui::object;
+    use sui::tx_context;
     use sui::transfer;
-    use std::string::{Self as StringMod, String};
+    use sui::event;
+    use std::string;
+    use std::vector;
 
-    /// Proposal status değerleri
-    const STATUS_DISCUSSION: u8 = 0;
-    const STATUS_VOTING: u8 = 1;
-    const STATUS_APPROVED: u8 = 2;
-    const STATUS_REJECTED: u8 = 3;
-    const STATUS_EXECUTED: u8 = 4;
+    /**********************
+     *  Status enum'u     *
+     **********************/
 
-    /// Bu demo için sabit: 6 kişi oy kullanacak
-    const DEFAULT_TOTAL_VOTERS: u8 = 6;
+    /// Öneri durumları için enum.
+    /// Sadece bu üç state’i kullanıyoruz: Voting, Rejected, Executed.
+    public enum ProposalStatus has copy, drop, store {
+        Voting(),
+        Rejected(),
+        Executed(),
+    }
+
+    /**********************
+     *  Hata kodları      *
+     **********************/
+
+    /// Oy verme sadece VOTING durumunda mümkün
+    const E_NOT_IN_VOTING_STATUS: u64 = 1;
+    /// Proposal için hiç participant verilmemiş
+    const E_ZERO_PARTICIPANTS: u64 = 2;
+    /// Çok fazla participant
+    const E_TOO_MANY_PARTICIPANTS: u64 = 3;
+    /// Bütçe, proposal.amount'ı karşılayamıyor
+    const E_BUDGET_INSUFFICIENT: u64 = 4;
+
+    /**********************
+     *  Struct'lar        *
+     **********************/
 
     /// Topluluk bütçesi
     public struct CommunityBudget has key {
-        id: UID,
-        name: String,
+        id: object::UID,
+        name: string::String,
         total: u64,
         spent: u64,
     }
 
     /// Öneri / Problem kartı
     ///
-    /// chat_channel_id:
-    ///   - Messaging SDK ile frontend’de bir kanal açtığında aldığın ID’yi
-    ///     burada saklayabilirsin (örneğin bir roomId, conversationId vs.).
+    /// `participants`:
+    ///  - Messaging SDK ile kanal oluştururken UI'de girdiğin
+    ///    Sui adresleri (0x... listesi) burada tutuluyor.
+    ///  - Frontend bu vector'den yola çıkarak channel'ı oluşturabilir.
     public struct Proposal has key {
-        id: UID,
-        title: String,
-        description: String,
+        id: object::UID,
+        title: string::String,
+        description: string::String,
         amount: u64,
-        status: u8,
+        status: ProposalStatus,
         yes_votes: u64,
         no_votes: u64,
-        /// Bu öneri için oy kullanacak toplam kişi sayısı (biz 6 yapıyoruz)
-        total_voters: u8,
+        /// Bu öneri için oy kullanacak toplam kişi sayısı
+        total_voters: u64,
         /// Şu ana kadar kaç kişi oy verdi
-        votes_cast: u8,
+        votes_cast: u64,
         creator: address,
-        /// Para hangi adrese gidecek (kulüp cüzdanı vs.)
+        /// Para hangi adrese gidecek (kulüp/organizasyon cüzdanı vs.)
         receiver: address,
-        /// Sui Messaging SDK kanal kimliği (frontend’den gelecek)
-        chat_channel_id: vector<u8>,
+        /// Messaging kanalına dahil olan tüm Sui adresleri
+        participants: vector<address>,
     }
 
-    /// Harcama log’u
-    /// - Hangi proposal’dan çıktığını bilmek için proposal_id de saklıyoruz.
-    public struct SpendingLog has key {
-        id: UID,
-        proposal_id: ID,
+    /// Bütçeden harcama yapıldığında emit edilen event.
+    /// Log ekranında bu event'leri okuyup tabloyu doldurabilirsin.
+    public struct SpendingEvent has copy, drop {
+        budget_id: object::ID,
+        proposal_id: object::ID,
         amount: u64,
         receiver: address,
     }
 
-    /// İlk bütçeyi oluştur (ör: "42 Kocaeli Bütçesi", 1000 birim)
+    /**********************
+     *  Entry fonksiyonlar *
+     **********************/
+
+    /// İlk bütçeyi oluştur (ör: "42 Kocaeli Budget", 1000 birim).
+    /// Shared object olarak publish ediliyor.
     public entry fun create_budget(
         name_bytes: vector<u8>,
         total: u64,
-        ctx: &mut TxContext
+        ctx: &mut tx_context::TxContext,
     ) {
-        let sender = Tx::sender(ctx);
-
         let budget = CommunityBudget {
-            id: Object::new(ctx),
-            name: StringMod::utf8(name_bytes),
+            id: object::new(ctx),
+            name: string::utf8(name_bytes),
             total,
             spent: 0,
         };
 
-        transfer::transfer(budget, sender);
+        // Topluluk bütçesini shared yapıyoruz ki herkes okuyup güncelleyebilsin.
+        transfer::share_object(budget);
     }
 
-    /// Yeni bir öneri (problem + çözüm talebi) oluştur
+    /// Yeni bir öneri (problem + çözüm talebi) oluştur.
     ///
     /// Frontend akışı:
-    ///   1. Messaging SDK ile bir chat kanalı aç (ör: room/channel oluştur).
-    ///   2. O kanaldan aldığın `channel_id` (bytes) değerini bu fonksiyona argüman olarak gönder.
+    ///   1. Messaging SDK ile kanal oluştururken UI'de participant
+    ///      adreslerini toplarsın.
+    ///   2. Aynı adres listesini `participants` argümanı olarak
+    ///      bu fonksiyona gönderirsin.
     public entry fun create_proposal(
         title_bytes: vector<u8>,
         description_bytes: vector<u8>,
         amount: u64,
         receiver: address,
-        chat_channel_id: vector<u8>,
-        ctx: &mut TxContext
+        participants: vector<address>,
+        ctx: &mut tx_context::TxContext,
     ) {
-        let sender = Tx::sender(ctx);
+        let creator = tx_context::sender(ctx);
+
+        let count = vector::length(&participants);
+        // En az bir participant olsun
+        assert!(count > 0, E_ZERO_PARTICIPANTS);
+        // İstersen yukarı limit de koy (opsiyonel)
+        assert!(count <= 1000, E_TOO_MANY_PARTICIPANTS);
 
         let proposal = Proposal {
-            id: Object::new(ctx),
-            title: StringMod::utf8(title_bytes),
-            description: StringMod::utf8(description_bytes),
+            id: object::new(ctx),
+            title: string::utf8(title_bytes),
+            description: string::utf8(description_bytes),
             amount,
-            status: STATUS_VOTING, // şimdilik direkt “oylama” durumunda açıyoruz
+            status: ProposalStatus::Voting(),
             yes_votes: 0,
             no_votes: 0,
-            total_voters: DEFAULT_TOTAL_VOTERS, // = 6
+            total_voters: count,
             votes_cast: 0,
-            creator: sender,
+            creator,
             receiver,
-            chat_channel_id,
+            participants,
         };
 
-        transfer::transfer(proposal, sender);
+        // Proposal da shared object oluyor; herkes görebilir / oy verebilir.
+        transfer::share_object(proposal);
     }
 
-    /// Oy verme fonksiyonu
+    /// Oy verme fonksiyonu.
     /// - Her oyda yes/no sayıları güncellenir
     /// - votes_cast 1 artar
     /// - votes_cast == total_voters olduğunda otomatik finalize edilir
-    public entry fun vote(
-        budget: &mut CommunityBudget,
-        proposal: &mut Proposal,
-        choice: bool,
-        ctx: &mut TxContext
-    ) {
-        // Sadece oylama durumunda oy verilebilsin
-        assert!(proposal.status == STATUS_VOTING, 1);
+	public entry fun vote(
+		budget: &mut CommunityBudget,
+		proposal: &mut Proposal,
+		choice: bool,
+		_ctx: &mut tx_context::TxContext,
+	) {
+		// Yalnızca Voting durumunda oy verilsin
+		match (proposal.status) {
+			ProposalStatus::Voting() => { },
+			_ => abort E_NOT_IN_VOTING_STATUS,
+		};
 
-        if (choice) {
-            proposal.yes_votes = proposal.yes_votes + 1;
-        } else {
-            proposal.no_votes = proposal.no_votes + 1;
-        };
+		if (choice) {
+			proposal.yes_votes = proposal.yes_votes + 1;
+		} else {
+			proposal.no_votes = proposal.no_votes + 1;
+		};
 
-        // Kullanılmış oy sayısını arttır
-        proposal.votes_cast = proposal.votes_cast + 1;
+		// Kullanılmış oy sayısını arttır
+		proposal.votes_cast = proposal.votes_cast + 1;
 
-        // Eğer tüm seçmenler oy vermişse, sonucu otomatik olarak belirle
-        if (proposal.votes_cast == proposal.total_voters) {
-            finalize_proposal(budget, proposal, ctx);
-        };
-    }
+		// Eğer tüm seçmenler oy vermişse, sonucu otomatik belirle
+		if (proposal.votes_cast == proposal.total_voters) {
+			finalize_proposal(budget, proposal);
+		};
+	}
 
-    /// İç fonksiyon: tüm oylar geldikten sonra sonucu belirler.
-    /// - yes > no ise: bütçeden düş, log oluştur, status = EXECUTED
-    /// - aksi halde: status = REJECTED
+    /**********************
+     *  İç fonksiyonlar   *
+     **********************/
+
+    /// Tüm oylar geldikten sonra sonucu belirler.
+    /// - yes > no ise: bütçeden düş, event emit et, status = Executed
+    /// - aksi halde: status = Rejected
     fun finalize_proposal(
         budget: &mut CommunityBudget,
         proposal: &mut Proposal,
-        ctx: &mut TxContext
     ) {
-        let sender = Tx::sender(ctx);
-
         if (proposal.yes_votes > proposal.no_votes) {
-            // Öneri kabul
             let remaining = budget.total - budget.spent;
-            assert!(remaining >= proposal.amount, 4);
+            assert!(remaining >= proposal.amount, E_BUDGET_INSUFFICIENT);
 
             budget.spent = budget.spent + proposal.amount;
-            proposal.status = STATUS_EXECUTED;
+            proposal.status = ProposalStatus::Executed();
 
-            //let proposal_id = Object::id(&proposal);
+            let budget_id = object::id(budget);
+            let proposal_id = object::id(proposal);
 
-			// let proposal_ref: &Proposal = &*proposal;
-            // let proposal_id: ID = Object::id(proposal_ref);
-			let proposal_id: ID = Object::id(proposal);
-
-            let log = SpendingLog {
-                id: Object::new(ctx),
+            event::emit(SpendingEvent {
+                budget_id,
                 proposal_id,
                 amount: proposal.amount,
                 receiver: proposal.receiver,
-            };
-
-            transfer::transfer(log, sender);
+            });
         } else {
-            // Reddedildi
-            proposal.status = STATUS_REJECTED;
+            // Oy çokluğu yoksa reddedildi
+            proposal.status = ProposalStatus::Rejected();
         };
-    }
-
-    /// Gerekirse admin/manual tetiklemek için (opsiyonel)
-    /// Örneğin demo sırasında hata olursa elle de çalıştırabilirsin.
-    public entry fun manual_finalize(
-        budget: &mut CommunityBudget,
-        proposal: &mut Proposal,
-        ctx: &mut TxContext
-    ) {
-        finalize_proposal(budget, proposal, ctx);
     }
 }
