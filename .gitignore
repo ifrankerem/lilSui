@@ -1,0 +1,70 @@
+# -------------------------
+# OS / Editor clutter
+# -------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+*.swp
+*.swo
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+
+# -------------------------
+# Logs & temp files
+# -------------------------
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+
+# -------------------------
+# Node / TypeScript (backend/)
+# -------------------------
+node_modules/
+backend/node_modules/
+
+# Build outputs
+dist/
+backend/dist/
+build/
+backend/build/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Coverage
+coverage/
+.nyc_output/
+
+# -------------------------
+# Env & secrets
+# -------------------------
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# Sui / Move artifacts
+# -------------------------
+# Sui Move derleme çıktıları
+/build/
+/debug/
+/release/
+
+# Eğer Move.lock’ı her makinede yeniden oluşturmak istersen:
+Move.lock
+
+# -------------------------
+# Misc
+# -------------------------
+*.log.*
+*.orig
+*.bak

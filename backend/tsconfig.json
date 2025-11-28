@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": "src",
+    "outDir": "dist",
+
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+
+    // BUNU EKLE veya true yazıyorsa false yap
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src"]
+}

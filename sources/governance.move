@@ -151,10 +151,9 @@ module community_budget::governance {
 		choice: bool,
 		_ctx: &mut tx_context::TxContext,
 	) {
-		// Yalnızca Voting durumunda oy verilsin
-		match (proposal.status) {
-			ProposalStatus::Voting() => { },
-			_ => abort E_NOT_IN_VOTING_STATUS,
+		// Basit guard: zaten yeterli oy kullanılmışsa, tekrar oy verme.
+		if (proposal.votes_cast >= proposal.total_voters) {
+			abort E_NOT_IN_VOTING_STATUS;
 		};
 
 		if (choice) {
@@ -163,10 +162,8 @@ module community_budget::governance {
 			proposal.no_votes = proposal.no_votes + 1;
 		};
 
-		// Kullanılmış oy sayısını arttır
 		proposal.votes_cast = proposal.votes_cast + 1;
 
-		// Eğer tüm seçmenler oy vermişse, sonucu otomatik belirle
 		if (proposal.votes_cast == proposal.total_voters) {
 			finalize_proposal(budget, proposal);
 		};
