@@ -1,36 +1,36 @@
 // src/scripts/voteYes.ts
 import { TransactionBlock } from "@mysten/sui.js/transactions";
-import { suiClient } from "../lib/suiClient";
 import { PACKAGE_ID } from "../config/sui";
+import { getClient } from "../lib/suiClient";   // 👈 BURAYI DEĞİŞTİRDİK
 import { getSponsorKeypair } from "../lib/keypair";
 
-// Buraya terminalden argümanla da alabilirsin istersen:
-const BUDGET_ID = "0x981de08c486441373363811629f73278c5e3f859f40eed7a541416667fb68952";
-const PROPOSAL_ID = "0xc22ab84a8f0d7d961f8e3b5eef37fdb752477bb905532f8c9d6bdb647aca9849";
-
 async function main() {
-  const keypair = getSponsorKeypair();
+  const [budgetId, proposalId] = process.argv.slice(2);
+  if (!budgetId || !proposalId) {
+    throw new Error("Usage: ts-node src/scripts/voteYes.ts <BUDGET_ID> <PROPOSAL_ID>");
+  }
+
+  const client = getClient();
+  const signer = getSponsorKeypair();
 
   const tx = new TransactionBlock();
 
   tx.moveCall({
-	target: `${PACKAGE_ID}::governance::vote`,
-	arguments: [
-	  tx.object(BUDGET_ID),
-	  tx.object(PROPOSAL_ID),
-	  tx.pure.bool(false), // Evet
-	],
+    target: `${PACKAGE_ID}::governance::vote`,
+    arguments: [
+      tx.object(budgetId),
+      tx.object(proposalId),
+      tx.pure(false), // EVET oyu
+    ],
   });
 
-  tx.setGasBudget(50_000_000);
-
-  const result = await suiClient.signAndExecuteTransactionBlock({
-	signer: keypair,
-	transactionBlock: tx,
-	options: { showEffects: false },
+  const res = await client.signAndExecuteTransactionBlock({
+    transactionBlock: tx,
+    signer,
+    options: { showEffects: false, showEvents: false },
   });
 
-  console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(res, null, 2));
 }
 
 main().catch((e) => {
