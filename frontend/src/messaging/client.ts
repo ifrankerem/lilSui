@@ -9,10 +9,10 @@ const SIGNER_STORAGE_KEY = "lilsui_chat_signer";
 // Keypair'i localStorage'dan al veya yeni oluştur (persist)
 function getOrCreateChatSigner(): Ed25519Keypair {
   try {
-    const stored = localStorage. getItem(SIGNER_STORAGE_KEY);
+    const stored = localStorage.getItem(SIGNER_STORAGE_KEY);
     if (stored) {
       const secretKey = Uint8Array.from(JSON.parse(stored));
-      return Ed25519Keypair. fromSecretKey(secretKey);
+      return Ed25519Keypair.fromSecretKey(secretKey);
     }
   } catch (e) {
     console.warn("Stored keypair invalid, generating new one");
@@ -20,9 +20,9 @@ function getOrCreateChatSigner(): Ed25519Keypair {
 
   // Yeni oluştur ve kaydet
   const newKeypair = Ed25519Keypair.generate();
-  localStorage. setItem(
+  localStorage.setItem(
     SIGNER_STORAGE_KEY,
-    JSON.stringify(Array. from(newKeypair.getSecretKey()))
+    JSON.stringify(Array.from(newKeypair.getSecretKey()))
   );
   return newKeypair;
 }
@@ -31,13 +31,13 @@ const chatSigner = getOrCreateChatSigner();
 
 // 1) Normal Sui client
 const baseClient = new SuiClient({
-  url: import.meta.env.VITE_SUI_RPC_URL ??  getFullnodeUrl("testnet"),
+  url: import.meta.env. VITE_SUI_RPC_URL ?? getFullnodeUrl("testnet"),
 });
 
 // 2) Seal + Messaging extension
 const extendedClient = baseClient
   .$extend(
-    SealClient. asClientExtension({
+    SealClient.asClientExtension({
       serverConfigs: [
         {
           objectId:
@@ -53,19 +53,20 @@ const extendedClient = baseClient
     })
   )
   .$extend(
-    SuiStackMessagingClient.experimental_asClientExtension({
+    SuiStackMessagingClient. experimental_asClientExtension({
       walrusStorageConfig: {
         aggregator:
           import.meta.env.VITE_WALRUS_AGGREGATOR ??
           "https://aggregator.walrus-testnet.walrus.space",
         publisher:
-          import.meta.env.VITE_WALRUS_PUBLISHER ??
+          import.meta.env. VITE_WALRUS_PUBLISHER ??
           "https://publisher.walrus-testnet.walrus.space",
         epochs: 1,
       },
+      // ✅ DÜZELTME: Boşluk kaldırıldı ve doğru URL
       mvrApiUrl:
-        import.meta.env. VITE_MVR_API_URL ?? 
-        "https://mvr.walrus-testnet. walrus.space/api/v1",
+        import.meta.env. VITE_MVR_API_URL ??
+        "https://mainnet.mvr.mystenlabs.com",
       sessionKeyConfig: {
         address: chatSigner.toSuiAddress(),
         ttlMin: 30,
@@ -76,6 +77,6 @@ const extendedClient = baseClient
 
 // Dışarıya export
 export const messagingClient = extendedClient as any;
-export const messaging = (messagingClient as any).messaging;
+export const messaging = (messagingClient as any). messaging;
 export const chatSignerKeypair = chatSigner;
 export const chatSupportAddress = chatSigner.toSuiAddress();
