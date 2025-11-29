@@ -1,16 +1,21 @@
 // src/pages/CreateRequestPage.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { MainLayout } from "../components/MainLayout";
 import { apiCreateProposal, apiCreateBudget } from "../api";
+import { isAdmin } from "../lib/adminCheck";
 
 export default function CreateRequestPage() {
   const navigate = useNavigate();
+  const account = useCurrentAccount();
+  const userIsAdmin = isAdmin(account?.address);
 
   // Budget creation state
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [budgetName, setBudgetName] = useState("");
-  const [budgetTotal, setBudgetTotal] = useState(1000);
+  const [adminCapId, setAdminCapId] = useState("");
+  const [coinObjectId, setCoinObjectId] = useState("");
 
   // Proposal form state
   const [title, setTitle] = useState("");
@@ -25,11 +30,15 @@ export default function CreateRequestPage() {
 
   const handleCreateBudget = async () => {
     if (!budgetName) {
-      setError("Bütçe adı gerekli.");
+      setError("Budget name is required.");
       return;
     }
-    if (budgetTotal <= 0) {
-      setError("Bütçe miktarı 0'dan büyük olmalı.");
+    if (!adminCapId) {
+      setError("AdminCap ID is required.");
+      return;
+    }
+    if (!coinObjectId) {
+      setError("SUI Coin Object ID is required.");
       return;
     }
 
@@ -38,10 +47,11 @@ export default function CreateRequestPage() {
       setSuccess(null);
       setLoading(true);
 
-      const res = await apiCreateBudget(budgetName, budgetTotal);
-      setSuccess(`Bütçe oluşturuldu! ID: ${res.budgetId}`);
+      const res = await apiCreateBudget(adminCapId, budgetName, coinObjectId);
+      setSuccess(`Budget created! ID: ${res.budgetId}`);
       setBudgetName("");
-      setBudgetTotal(1000);
+      setAdminCapId("");
+      setCoinObjectId("");
       setShowBudgetForm(false);
     } catch (e: unknown) {
       const err = e as Error;
@@ -54,19 +64,19 @@ export default function CreateRequestPage() {
   const handleCreateProposal = async () => {
     // Validation
     if (!title) {
-      setError("Başlık gerekli.");
+      setError("Title is required.");
       return;
     }
     if (!description) {
-      setError("Açıklama gerekli.");
+      setError("Description is required.");
       return;
     }
     if (amount <= 0) {
-      setError("Miktar 0'dan büyük olmalı.");
+      setError("Amount must be greater than 0.");
       return;
     }
     if (!receiver) {
-      setError("Alıcı adresi gerekli.");
+      setError("Receiver address is required.");
       return;
     }
 
@@ -76,7 +86,7 @@ export default function CreateRequestPage() {
       .filter(Boolean);
 
     if (participants.length === 0) {
-      setError("En az bir katılımcı adresi gerekli.");
+      setError("At least one participant address is required.");
       return;
     }
 
@@ -93,7 +103,7 @@ export default function CreateRequestPage() {
         participants,
       });
 
-      setSuccess(`İstek oluşturuldu! Proposal ID: ${res.proposalId}`);
+      setSuccess(`Request created! Proposal ID: ${res.proposalId}`);
 
       // Clear form
       setTitle("");
@@ -119,9 +129,9 @@ export default function CreateRequestPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">İstek Oluştur</h1>
+          <h1 className="text-2xl font-bold text-slate-100">Create Request</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Yeni bir bütçe talebi oluşturun.
+            Create a new budget request or proposal.
           </p>
         </div>
 
@@ -139,76 +149,94 @@ export default function CreateRequestPage() {
           </div>
         )}
 
-        {/* Budget Creation Toggle */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowBudgetForm(!showBudgetForm)}
-            className="text-sm text-emerald-400 hover:text-emerald-300"
-          >
-            {showBudgetForm ? "← Proposal Formuna Dön" : "Yeni Bütçe Oluştur"}
-          </button>
-        </div>
+        {/* Budget Creation Toggle - Only visible to admin */}
+        {userIsAdmin && (
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowBudgetForm(!showBudgetForm)}
+              className="text-sm text-emerald-400 hover:text-emerald-300"
+            >
+              {showBudgetForm ? "← Back to Proposal Form" : "Create New Budget"}
+            </button>
+          </div>
+        )}
 
-        {/* Budget Creation Form */}
-        {showBudgetForm && (
+        {/* Budget Creation Form - Only visible to admin */}
+        {userIsAdmin && showBudgetForm && (
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-100">
-              Yeni Bütçe Oluştur
+              Create New Budget
             </h2>
+            <p className="text-sm text-amber-400">
+              ⚠️ Admin only: This will deposit real SUI into the budget.
+            </p>
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Bütçe Adı
+                Budget Name
               </label>
               <input
                 type="text"
                 value={budgetName}
                 onChange={(e) => setBudgetName(e.target.value)}
-                placeholder="Örn: Etkinlik Bütçesi"
+                placeholder="e.g., Event Budget"
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Toplam Miktar (TL)
+                AdminCap Object ID
               </label>
               <input
-                type="number"
-                value={budgetTotal}
-                onChange={(e) => setBudgetTotal(Number(e.target.value))}
-                min="0"
-                className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                type="text"
+                value={adminCapId}
+                onChange={(e) => setAdminCapId(e.target.value)}
+                placeholder="0x..."
+                className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                SUI Coin Object ID (to deposit)
+              </label>
+              <input
+                type="text"
+                value={coinObjectId}
+                onChange={(e) => setCoinObjectId(e.target.value)}
+                placeholder="0x..."
+                className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
               />
             </div>
 
             <button
               onClick={handleCreateBudget}
               disabled={loading}
-              className="w-full px-4 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold transition-colors disabled:opacity-50"
             >
-              {loading ? "Oluşturuluyor..." : "Bütçe Oluştur"}
+              {loading ? "Creating..." : "Create Budget"}
             </button>
           </div>
         )}
 
         {/* Proposal Form */}
-        {!showBudgetForm && (
+        {(!userIsAdmin || !showBudgetForm) && (
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-100">
-              Yeni İstek
+              New Request
             </h2>
 
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Başlık *
+                Title *
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Örn: Yeni Sandalyeler"
+                placeholder="e.g., New Chairs"
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -216,12 +244,12 @@ export default function CreateRequestPage() {
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Açıklama *
+                Description *
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="İstek hakkında detaylı açıklama..."
+                placeholder="Detailed description of the request..."
                 rows={3}
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
@@ -230,14 +258,14 @@ export default function CreateRequestPage() {
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Miktar (TL) *
+                Amount (SUI) *
               </label>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
                 min="0"
-                placeholder="Talep edilen miktar"
+                placeholder="Requested amount"
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -245,7 +273,7 @@ export default function CreateRequestPage() {
             {/* Receiver */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Alıcı Adresi *
+                Receiver Address *
               </label>
               <input
                 type="text"
@@ -259,11 +287,10 @@ export default function CreateRequestPage() {
             {/* Participants */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Katılımcılar (Oy Verecekler) *
+                Participants (Voters) *
               </label>
               <p className="text-xs text-slate-400 mb-2">
-                Her satıra bir adres girin. Bu adresler isteği onaylayabilir
-                veya reddedebilir.
+                Enter one address per line. These addresses can approve or reject the request.
               </p>
               <textarea
                 value={participantsText}
@@ -280,7 +307,7 @@ export default function CreateRequestPage() {
               disabled={loading}
               className="w-full px-4 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
             >
-              {loading ? "Oluşturuluyor..." : "İstek Oluştur"}
+              {loading ? "Creating..." : "Create Request"}
             </button>
           </div>
         )}
