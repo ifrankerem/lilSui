@@ -1,4 +1,6 @@
 // src/server.ts
+import "dotenv/config";   // 👈 BUNU EN ÜSTE KOY
+
 import express from "express";
 import cors from "cors";
 import {
@@ -9,6 +11,7 @@ import {
   getProposal,
   getSpendingEvents,
 } from "./services/governance";
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
