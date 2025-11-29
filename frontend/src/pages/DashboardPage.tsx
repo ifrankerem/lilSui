@@ -5,22 +5,41 @@ import {
   apiCreateProposal,
   apiVoteOnProposal,
   apiGetLogs,
+  apiGetBudget,
+  apiGetProposal,
   type LogEntry,
+  type BudgetDto,
+  type ProposalDto,
 } from "../../../backend/src/lib/api";
+
+function prettyStatus(statusRaw: any): string {
+  if (!statusRaw) return "-";
+  const asString = JSON.stringify(statusRaw);
+  if (asString.includes("Voting")) return "Voting";
+  if (asString.includes("Executed")) return "Executed";
+  if (asString.includes("Rejected")) return "Rejected";
+  return asString;
+}
 
 export default function DashboardPage() {
   // 1. Create Budget form state
   const [budgetName, setBudgetName] = useState("Beta Budget");
   const [budgetTotal, setBudgetTotal] = useState(1000);
-  const [budgetId, setBudgetId] = useState(""); // current budget id (input + create sonucu)
+  const [budgetId, setBudgetId] = useState("");
+
+  // Budget detay kartı
+  const [budgetInfo, setBudgetInfo] = useState<BudgetDto | null>(null);
 
   // 2. Create Proposal form state
   const [proposalTitle, setProposalTitle] = useState("New Chairs");
   const [proposalDesc, setProposalDesc] = useState("Buy comfy chairs");
   const [proposalAmount, setProposalAmount] = useState(300);
-  const [receiver, setReceiver] = useState(""); // senin cüzdan adresin
+  const [receiver, setReceiver] = useState("");
   const [participantsText, setParticipantsText] = useState("");
   const [proposalId, setProposalId] = useState("");
+
+  // Proposal detay kartı
+  const [proposalInfo, setProposalInfo] = useState<ProposalDto | null>(null);
 
   // 3. Logs + loading
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -34,8 +53,28 @@ export default function DashboardPage() {
       setError(null);
       setLoading(true);
       const res = await apiCreateBudget(budgetName, budgetTotal);
+
+      // sadece ID'yi state'e yaz, detay çekme
       setBudgetId(res.budgetId);
+      setBudgetInfo(null); // eski kartı temizle
       console.log("Created budget:", res);
+    } catch (e: any) {
+      setError(e.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadBudgetInfo = async () => {
+    try {
+      if (!budgetId) {
+        setError("Önce bir budgetId seç / oluştur.");
+        return;
+      }
+      setError(null);
+      setLoading(true);
+      const info = await apiGetBudget(budgetId);
+      setBudgetInfo(info);
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -65,8 +104,27 @@ export default function DashboardPage() {
         participants,
       });
 
+      // sadece ID'yi state'e yaz, detay çekme
       setProposalId(res.proposalId);
+      setProposalInfo(null);
       console.log("Created proposal:", res);
+    } catch (e: any) {
+      setError(e.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadProposalInfo = async () => {
+    try {
+      if (!proposalId) {
+        setError("Önce bir proposalId seç / oluştur.");
+        return;
+      }
+      setError(null);
+      setLoading(true);
+      const info = await apiGetProposal(proposalId);
+      setProposalInfo(info);
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -85,6 +143,10 @@ export default function DashboardPage() {
 
       const res = await apiVoteOnProposal(proposalId, budgetId, choice);
       console.log("Vote result:", res);
+
+      // Oy verdikten sonra proposal detayını güncelle
+      const info = await apiGetProposal(proposalId);
+      setProposalInfo(info);
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -105,11 +167,13 @@ export default function DashboardPage() {
     }
   };
 
-  // --- UI (şu an basit, sonra Tailwind ile güzelleştiririz) ---
+  const remaining =
+    budgetInfo ? budgetInfo.total - budgetInfo.spent : undefined;
 
+  // --- UI ---
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-6 space-y-8">
-      <h1 className="text-2xl font-bold mb-4">Community Budget dApp</h1>
+      <h1 className="text-3xl font-bold mb-4">Community Budget dApp</h1>
 
       {error && (
         <div className="bg-red-900/40 border border-red-500 px-3 py-2 rounded mb-4 text-sm">
@@ -120,7 +184,7 @@ export default function DashboardPage() {
       {loading && <p className="text-sm text-slate-400">Loading...</p>}
 
       {/* 1. Create Budget */}
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h2 className="text-xl font-semibold">1. Create Budget</h2>
         <div className="flex gap-2 flex-wrap">
           <input
@@ -142,9 +206,15 @@ export default function DashboardPage() {
           >
             Create Budget
           </button>
+          <button
+            onClick={handleLoadBudgetInfo}
+            className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs"
+          >
+            Load Budget Detail
+          </button>
         </div>
-        <div className="mt-2 text-sm">
-          <span className="mr-2">Current budgetId:</span>
+        <div className="mt-1 text-sm flex items-center gap-2">
+          <span className="mr-1">Current budgetId:</span>
           <input
             className="px-2 py-1 rounded bg-slate-800 border border-slate-700 w-[460px]"
             value={budgetId}
@@ -152,10 +222,33 @@ export default function DashboardPage() {
             placeholder="Paste existing budgetId if you already have one"
           />
         </div>
+
+        {budgetInfo && (
+          <div className="mt-3 max-w-xl bg-slate-800/60 border border-slate-700 rounded p-3 text-sm space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold">{budgetInfo.name}</span>
+              <span className="font-mono text-xs">
+                {budgetInfo.id.slice(0, 10)}…
+              </span>
+            </div>
+            <div>
+              Total: <span className="font-mono">{budgetInfo.total}</span>
+            </div>
+            <div>
+              Spent: <span className="font-mono">{budgetInfo.spent}</span>
+            </div>
+            <div>
+              Remaining:{" "}
+              <span className="font-mono">
+                {remaining !== undefined ? remaining : "-"}
+              </span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 2. Create Proposal */}
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h2 className="text-xl font-semibold">2. Create Proposal</h2>
         <div className="flex gap-2 flex-wrap">
           <input
@@ -192,12 +285,18 @@ export default function DashboardPage() {
           placeholder="One address per line"
         />
 
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
           <button
             onClick={handleCreateProposal}
             className="px-4 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
           >
             Create Proposal
+          </button>
+          <button
+            onClick={handleLoadProposalInfo}
+            className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs"
+          >
+            Load Proposal Detail
           </button>
           <span className="text-sm">
             Current proposalId:{" "}
@@ -209,12 +308,59 @@ export default function DashboardPage() {
             />
           </span>
         </div>
+
+        {proposalInfo && (
+          <div className="mt-3 max-w-3xl bg-slate-800/60 border border-slate-700 rounded p-3 text-sm space-y-1">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="font-semibold">
+                  {proposalInfo.title} – {proposalInfo.description}
+                </div>
+                <div className="text-xs text-slate-400 font-mono">
+                  {proposalInfo.id}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs uppercase text-slate-400">Status</div>
+                <div className="font-semibold">
+                  {prettyStatus(proposalInfo.statusRaw)}
+                </div>
+              </div>
+            </div>
+            <div>
+              Amount: <span className="font-mono">{proposalInfo.amount}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span>
+                ✅ <span className="font-mono">{proposalInfo.yesVotes}</span>
+              </span>
+              <span>
+                ❌ <span className="font-mono">{proposalInfo.noVotes}</span>
+              </span>
+              <span className="text-xs text-slate-400">
+                ({proposalInfo.votesCast}/{proposalInfo.totalVoters})
+              </span>
+            </div>
+            <div>
+              Receiver:{" "}
+              <span className="font-mono">
+                {proposalInfo.receiver.slice(0, 10)}…
+              </span>
+            </div>
+            <div className="text-xs text-slate-400">
+              Participants ({proposalInfo.participants.length}):{" "}
+              {proposalInfo.participants
+                .map((p) => p.slice(0, 10) + "…")
+                .join(", ")}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 3. Vote & Logs */}
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">3. Vote & Logs</h2>
-        <div className="flex gap-2 mb-2">
+        <div className="flex gap-2 mb-2 flex-wrap">
           <button
             onClick={() => handleVote(true)}
             className="px-4 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"

@@ -1,62 +1,43 @@
 // src/App.tsx
-import { NavLink, Routes, Route } from "react-router-dom";
-import { LoginPage } from "./pages/LoginPage";
+import { Routes, Route, Link, Navigate } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
-import { ChatPage } from "./pages/ChatPage";
+import ChatPage from "./pages/ChatPage";
+import ZkGoogleCallbackPage from "./pages/ZkGoogleCallbackPage";
 import { WalletBar } from "./components/WalletBar";
 
-export function App() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Top bar */}
-      <header className="border-b border-slate-700">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-          <div className="font-semibold">Community Budget dApp</div>
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+      {/* Üst bar */}
+      <header className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
+        <nav className="flex gap-4 text-sm">
+          <Link to="/login" className="hover:text-emerald-400">
+            Login
+          </Link>
+          <Link to="/dashboard" className="hover:text-emerald-400">
+            Dashboard
+          </Link>
+          <Link to="/chat" className="hover:text-emerald-400">
+            Chat
+          </Link>
+        </nav>
 
-          <nav className="flex gap-4 text-sm">
-            <NavLink
-              to="/"
-              className={({ isActive }) =>
-                isActive ? "font-bold underline" : "hover:underline"
-              }
-              end
-            >
-              Login
-            </NavLink>
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) =>
-                isActive ? "font-bold underline" : "hover:underline"
-              }
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/chat"
-              className={({ isActive }) =>
-                isActive ? "font-bold underline" : "hover:underline"
-              }
-            >
-              Chat
-            </NavLink>
-          </nav>
-
-          {/* Sağ üstte mini wallet bar (isteğe bağlı) */}
-          <div className="hidden md:block">
-            <WalletBar />
-          </div>
-        </div>
+        {/* Sağ üstte cüzdan durumu */}
+        <WalletBar />
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      {/* Sayfa içeriği */}
+      <main className="flex-1 p-4">
         <Routes>
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/chat" element={<ChatPage />} />
+		  <Route path="/zklogin-google-callback" element={<ZkGoogleCallbackPage />} />
+          {/* Varsayılan: /login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </main>
     </div>
   );
 }
-
-export default App;

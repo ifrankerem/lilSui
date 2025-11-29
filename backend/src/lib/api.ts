@@ -77,9 +77,9 @@ async function request<T>(
     let msg = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      if (body?.error) msg += ` - ${body.error}`;
+      if ((body as any)?.error) msg += ` - ${(body as any).error}`;
     } catch {
-      // ignore
+      // ignore body parse errors
     }
     throw new Error(msg);
   }
@@ -137,3 +137,7 @@ export function apiVoteOnProposal(
 export function apiGetLogs() {
   return request<LogEntry[]>("/logs");
 }
+
+// Dashboard için kısa isimli helper'lar
+export const fetchBudget = apiGetBudget;
+export const fetchProposal = apiGetProposal;
