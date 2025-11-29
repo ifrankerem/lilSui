@@ -1,11 +1,12 @@
 // src/pages/CreateRequestPage.tsx
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "../components/MainLayout";
 import { apiCreateProposal, apiCreateBudget } from "../api";
 
 export default function CreateRequestPage() {
   const navigate = useNavigate();
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Budget creation state
   const [showBudgetForm, setShowBudgetForm] = useState(false);
@@ -25,11 +26,29 @@ export default function CreateRequestPage() {
   const [successType, setSuccessType] = useState<"proposal" | "budget" | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleCopyId = async () => {
     if (successId) {
-      await navigator.clipboard.writeText(successId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        await navigator.clipboard.writeText(successId);
+        setCopied(true);
+        // Clear any existing timeout
+        if (copyTimeoutRef.current) {
+          clearTimeout(copyTimeoutRef.current);
+        }
+        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // Fallback for environments where clipboard API is not available
+        setError("Failed to copy to clipboard. Please copy the ID manually.");
+      }
     }
   };
 
