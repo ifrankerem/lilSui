@@ -1,3 +1,4 @@
+// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -8,12 +9,10 @@ import {
   WalletProvider,
   createNetworkConfig,
 } from "@mysten/dapp-kit";
-import { getFullnodeUrl } from "@mysten/sui.js/client";
+import { getFullnodeUrl } from "@mysten/sui. js/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { RegisterEnokiWallets } from "./enoki/RegisterEnokiWallets";
-import { SessionKeyProvider } from "./providers/SessionKeyProvider";        // 👈 YENİ
-import { MessagingClientProvider } from "./providers/MessagingClientProvider"; // 👈 YENİ
 
 import "@mysten/dapp-kit/dist/index.css";
 import "./index.css";
@@ -24,22 +23,17 @@ const { networkConfig } = createNetworkConfig({
 
 const queryClient = new QueryClient();
 
-ReactDOM.createRoot(document. getElementById("root") as HTMLElement). render(
+ReactDOM. createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
         <QueryClientProvider client={queryClient}>
           <RegisterEnokiWallets />
           <WalletProvider autoConnect>
-            {/* 👇 Messaging Provider'ları ekle */}
-            <SessionKeyProvider>
-              <MessagingClientProvider>
-                <App />
-              </MessagingClientProvider>
-            </SessionKeyProvider>
+            <App />
           </WalletProvider>
         </QueryClientProvider>
       </SuiClientProvider>
     </BrowserRouter>
-  </React.StrictMode>,
+  </React.StrictMode>
 );

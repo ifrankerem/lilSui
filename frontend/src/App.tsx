@@ -20,8 +20,6 @@ export default function App() {
       {/* Proposal chat kanalı */}
       <Route path="/chat/:channelId" element={<ChatPage />} />
 
-		<Route path="/proposals/:proposalId" element={<ProposalDetailPage />} />
-		<Route path="/chat/:channelId" element={<ChatPage />} />
       {/* Default: /login'e yönlendirme */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
