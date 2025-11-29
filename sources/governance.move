@@ -3,15 +3,18 @@ module community_budget::governance {
     use sui::tx_context;
     use sui::transfer;
     use sui::event;
+    use sui::coin::{Self, Coin};
+    use sui::sui::SUI;
+    use sui::balance::{Self, Balance};
     use std::string;
     use std::vector;
 
     /**********************
-     *  Status enum'u     *
+     *  Status enum       *
      **********************/
 
-    /// Öneri durumları için enum.
-    /// Sadece bu üç state’i kullanıyoruz: Voting, Rejected, Executed.
+    /// Proposal status enum.
+    /// Only three states: Voting, Rejected, Executed.
     public enum ProposalStatus has copy, drop, store {
         Voting(),
         Rejected(),
@@ -19,36 +22,44 @@ module community_budget::governance {
     }
 
     /**********************
-     *  Hata kodları      *
+     *  Error codes       *
      **********************/
 
-    /// Oy verme sadece VOTING durumunda mümkün
+    /// Voting is only possible during VOTING status
     const E_NOT_IN_VOTING_STATUS: u64 = 1;
-    /// Proposal için hiç participant verilmemiş
+    /// No participants provided for proposal
     const E_ZERO_PARTICIPANTS: u64 = 2;
-    /// Çok fazla participant
+    /// Too many participants
     const E_TOO_MANY_PARTICIPANTS: u64 = 3;
-    /// Bütçe, proposal.amount'ı karşılayamıyor
+    /// Budget cannot cover proposal.amount
     const E_BUDGET_INSUFFICIENT: u64 = 4;
+    /// Not admin
+    const E_NOT_ADMIN: u64 = 5;
 
     /**********************
-     *  Struct'lar        *
+     *  Structs           *
      **********************/
 
-    /// Topluluk bütçesi
+    /// Admin capability - only the holder of this object can create budgets
+    public struct AdminCap has key, store {
+        id: object::UID,
+    }
+
+    /// Community budget with real SUI balance
     public struct CommunityBudget has key {
         id: object::UID,
         name: string::String,
         total: u64,
         spent: u64,
+        /// Real SUI balance
+        funds: Balance<SUI>,
     }
 
-    /// Öneri / Problem kartı
+    /// Proposal / Problem card
     ///
     /// `participants`:
-    ///  - Messaging SDK ile kanal oluştururken UI'de girdiğin
-    ///    Sui adresleri (0x... listesi) burada tutuluyor.
-    ///  - Frontend bu vector'den yola çıkarak channel'ı oluşturabilir.
+    ///  - Sui addresses (0x... list) for messaging channel
+    ///  - Frontend can create channel from this vector
     public struct Proposal has key {
         id: object::UID,
         title: string::String,
@@ -57,19 +68,19 @@ module community_budget::governance {
         status: ProposalStatus,
         yes_votes: u64,
         no_votes: u64,
-        /// Bu öneri için oy kullanacak toplam kişi sayısı
+        /// Total number of voters for this proposal
         total_voters: u64,
-        /// Şu ana kadar kaç kişi oy verdi
+        /// Votes cast so far
         votes_cast: u64,
         creator: address,
-        /// Para hangi adrese gidecek (kulüp/organizasyon cüzdanı vs.)
+        /// Address to receive the funds (club/organization wallet)
         receiver: address,
-        /// Messaging kanalına dahil olan tüm Sui adresleri
+        /// All Sui addresses participating in the messaging channel
         participants: vector<address>,
     }
 
-    /// Bütçeden harcama yapıldığında emit edilen event.
-    /// Log ekranında bu event'leri okuyup tabloyu doldurabilirsin.
+    /// Event emitted when spending from budget.
+    /// Used to populate the log table in the frontend.
     public struct SpendingEvent has copy, drop {
         budget_id: object::ID,
         proposal_id: object::ID,
@@ -78,34 +89,48 @@ module community_budget::governance {
     }
 
     /**********************
-     *  Entry fonksiyonlar *
+     *  Init function     *
      **********************/
 
-    /// İlk bütçeyi oluştur (ör: "42 Kocaeli Budget", 1000 birim).
-    /// Shared object olarak publish ediliyor.
+    /// When contract is deployed, send AdminCap to the designated admin address
+    fun init(ctx: &mut tx_context::TxContext) {
+        let admin_address = @0x6b34f727c0faba6ab8e45fe344432fd14f3a31c4ee968a354c1940233d02daf6;
+        transfer::transfer(AdminCap {
+            id: object::new(ctx),
+        }, admin_address);
+    }
+
+    /**********************
+     *  Entry functions   *
+     **********************/
+
+    /// Create a budget (only AdminCap holder can do this).
+    /// initial_funds: Real SUI coin to deposit into the budget
     public entry fun create_budget(
+        _admin: &AdminCap,
         name_bytes: vector<u8>,
-        total: u64,
+        initial_funds: Coin<SUI>,
         ctx: &mut tx_context::TxContext,
     ) {
+        let total = coin::value(&initial_funds);
+        
         let budget = CommunityBudget {
             id: object::new(ctx),
             name: string::utf8(name_bytes),
             total,
             spent: 0,
+            funds: coin::into_balance(initial_funds),
         };
 
-        // Topluluk bütçesini shared yapıyoruz ki herkes okuyup güncelleyebilsin.
+        // Make budget a shared object so everyone can read and update
         transfer::share_object(budget);
     }
 
-    /// Yeni bir öneri (problem + çözüm talebi) oluştur.
+    /// Create a new proposal (problem + solution request).
     ///
-    /// Frontend akışı:
-    ///   1. Messaging SDK ile kanal oluştururken UI'de participant
-    ///      adreslerini toplarsın.
-    ///   2. Aynı adres listesini `participants` argümanı olarak
-    ///      bu fonksiyona gönderirsin.
+    /// Frontend flow:
+    ///   1. Collect participant addresses when creating messaging channel
+    ///   2. Pass the same address list as `participants` argument
     public entry fun create_proposal(
         title_bytes: vector<u8>,
         description_bytes: vector<u8>,
@@ -117,9 +142,9 @@ module community_budget::governance {
         let creator = tx_context::sender(ctx);
 
         let count = vector::length(&participants);
-        // En az bir participant olsun
+        // At least one participant required
         assert!(count > 0, E_ZERO_PARTICIPANTS);
-        // İstersen yukarı limit de koy (opsiyonel)
+        // Optional upper limit
         assert!(count <= 1000, E_TOO_MANY_PARTICIPANTS);
 
         let proposal = Proposal {
@@ -137,67 +162,69 @@ module community_budget::governance {
             participants,
         };
 
-        // Proposal da shared object oluyor; herkes görebilir / oy verebilir.
+        // Proposal is also a shared object; everyone can see / vote
         transfer::share_object(proposal);
     }
 
-    /// Oy verme fonksiyonu.
-    /// - Her oyda yes/no sayıları güncellenir
-    /// - votes_cast 1 artar
-    /// - votes_cast == total_voters olduğunda otomatik finalize edilir
-	public entry fun vote(
-		budget: &mut CommunityBudget,
-		proposal: &mut Proposal,
-		choice: bool,
-		_ctx: &mut tx_context::TxContext,
-	) {
-		// Basit guard: zaten yeterli oy kullanılmışsa, tekrar oy verme.
-		if (proposal.votes_cast >= proposal.total_voters) {
-			abort E_NOT_IN_VOTING_STATUS;
-		};
+    /// Vote on a proposal.
+    /// - Each vote updates yes/no counts
+    /// - votes_cast increments by 1
+    /// - When votes_cast == total_voters, automatically finalize
+    public entry fun vote(
+        budget: &mut CommunityBudget,
+        proposal: &mut Proposal,
+        choice: bool,
+        ctx: &mut tx_context::TxContext,
+    ) {
+        // Simple guard: if enough votes have been cast, don't allow more votes
+        if (proposal.votes_cast >= proposal.total_voters) {
+            abort E_NOT_IN_VOTING_STATUS;
+        };
 
-		if (choice) {
-			proposal.yes_votes = proposal.yes_votes + 1;
-		} else {
-			proposal.no_votes = proposal.no_votes + 1;
-		};
+        if (choice) {
+            proposal.yes_votes = proposal.yes_votes + 1;
+        } else {
+            proposal.no_votes = proposal.no_votes + 1;
+        };
 
-		proposal.votes_cast = proposal.votes_cast + 1;
+        proposal.votes_cast = proposal.votes_cast + 1;
 
-		if (proposal.votes_cast == proposal.total_voters) {
-			finalize_proposal(budget, proposal);
-		};
-	}
+        if (proposal.votes_cast == proposal.total_voters) {
+            finalize_proposal(budget, proposal, ctx);
+        };
+    }
 
     /**********************
-     *  İç fonksiyonlar   *
+     *  Internal functions *
      **********************/
 
-    /// Tüm oylar geldikten sonra sonucu belirler.
-    /// - yes > no ise: bütçeden düş, event emit et, status = Executed
-    /// - aksi halde: status = Rejected
+    /// Determine the result after all votes have been cast.
+    /// - yes > no: deduct from budget, transfer real SUI, emit event, status = Executed
+    /// - otherwise: status = Rejected
     fun finalize_proposal(
         budget: &mut CommunityBudget,
         proposal: &mut Proposal,
+        ctx: &mut tx_context::TxContext,
     ) {
         if (proposal.yes_votes > proposal.no_votes) {
-            let remaining = budget.total - budget.spent;
+            let remaining = balance::value(&budget.funds);
             assert!(remaining >= proposal.amount, E_BUDGET_INSUFFICIENT);
+
+            // Extract real SUI coin and transfer to receiver
+            let payment = coin::take(&mut budget.funds, proposal.amount, ctx);
+            transfer::public_transfer(payment, proposal.receiver);
 
             budget.spent = budget.spent + proposal.amount;
             proposal.status = ProposalStatus::Executed();
 
-            let budget_id = object::id(budget);
-            let proposal_id = object::id(proposal);
-
             event::emit(SpendingEvent {
-                budget_id,
-                proposal_id,
+                budget_id: object::id(budget),
+                proposal_id: object::id(proposal),
                 amount: proposal.amount,
                 receiver: proposal.receiver,
             });
         } else {
-            // Oy çokluğu yoksa reddedildi
+            // No majority, rejected
             proposal.status = ProposalStatus::Rejected();
         };
     }

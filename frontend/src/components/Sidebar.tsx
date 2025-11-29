@@ -2,6 +2,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit";
 import { getZkUser, setZkUser } from "../lib/zkAuth";
+import { isAdmin } from "../lib/adminCheck";
 
 export function Sidebar() {
   const navigate = useNavigate();
@@ -10,8 +11,9 @@ export function Sidebar() {
 
   // Get user info from zkLogin if available
   const zkUser = getZkUser();
-  const displayName = zkUser?.displayName || "Kullanıcı";
+  const displayName = zkUser?.displayName || "User";
   const avatarUrl = zkUser?.avatarUrl;
+  const userIsAdmin = isAdmin(account?.address);
 
   const handleLogout = () => {
     // Clear zkLogin user data
@@ -46,9 +48,16 @@ export function Sidebar() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-100 truncate">
-              {displayName}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-slate-100 truncate">
+                {displayName}
+              </p>
+              {userIsAdmin && (
+                <span className="bg-amber-500 text-black text-xs px-2 py-0.5 rounded font-semibold">
+                  ADMIN
+                </span>
+              )}
+            </div>
             {account && (
               <p className="text-xs text-slate-400 font-mono truncate">
                 {account.address.slice(0, 8)}…{account.address.slice(-4)}
@@ -74,7 +83,7 @@ export function Sidebar() {
               d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
             />
           </svg>
-          Ana Sayfa
+          Home
         </NavLink>
 
         <NavLink to="/create-request" className={linkClasses}>
@@ -91,7 +100,7 @@ export function Sidebar() {
               d="M12 4v16m8-8H4"
             />
           </svg>
-          İstek Oluştur
+          Create Request
         </NavLink>
 
         <NavLink to="/requests" className={linkClasses}>
@@ -108,7 +117,7 @@ export function Sidebar() {
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
             />
           </svg>
-          İstekleri Gör
+          View Requests
         </NavLink>
 
         <NavLink to="/budget-log" className={linkClasses}>
@@ -125,7 +134,7 @@ export function Sidebar() {
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
             />
           </svg>
-          Bütçe Geçmişi
+          Budget History
         </NavLink>
       </nav>
 
@@ -148,7 +157,7 @@ export function Sidebar() {
               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
             />
           </svg>
-          Çıkış Yap
+          Logout
         </button>
       </div>
     </aside>

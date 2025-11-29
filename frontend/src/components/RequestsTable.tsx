@@ -12,7 +12,7 @@ export function RequestsTable({ proposals, isLoading }: RequestsTableProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-slate-400">Yükleniyor...</div>
+        <div className="text-slate-400">Loading...</div>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export function RequestsTable({ proposals, isLoading }: RequestsTableProps) {
   if (proposals.length === 0) {
     return (
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 text-center">
-        <p className="text-slate-400">Henüz istek bulunmuyor.</p>
+        <p className="text-slate-400">No requests found.</p>
       </div>
     );
   }
@@ -31,22 +31,22 @@ export function RequestsTable({ proposals, isLoading }: RequestsTableProps) {
         <thead>
           <tr className="bg-slate-800/50 border-b border-slate-700">
             <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-              Tarih
+              Date
             </th>
             <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-              İsteyen Kişi
+              Requester
             </th>
             <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-              Amaç
+              Purpose
             </th>
             <th className="text-right px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-              Miktar
+              Amount
             </th>
             <th className="text-center px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-              Oylar
+              Votes
             </th>
             <th className="text-center px-4 py-3 text-xs font-semibold uppercase text-slate-400">
-              Durum
+              Status
             </th>
           </tr>
         </thead>
@@ -78,7 +78,7 @@ export function RequestsTable({ proposals, isLoading }: RequestsTableProps) {
               </td>
               <td className="px-4 py-3 text-right">
                 <span className="text-sm font-mono text-slate-100">
-                  {proposal.amount} TL
+                  {proposal.amount} SUI
                 </span>
               </td>
               <td className="px-4 py-3 text-center">

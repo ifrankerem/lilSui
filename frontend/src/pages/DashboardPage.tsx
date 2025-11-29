@@ -26,7 +26,7 @@ export default function DashboardPage() {
 
   const handleLoadBudgetInfo = async () => {
     if (!budgetId) {
-      setError("Lütfen bir Budget ID girin.");
+      setError("Please enter a Budget ID.");
       return;
     }
     try {
@@ -70,7 +70,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 rounded-lg">
               <span className="text-amber-400 text-lg">⚠</span>
               <span className="text-sm text-amber-400">
-                {pendingCount} bekleyen istek
+                {pendingCount} pending requests
               </span>
             </div>
           )}
@@ -86,7 +86,7 @@ export default function DashboardPage() {
         {/* Budget Overview Card */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-slate-100 mb-4">
-            Bütçe Özeti
+            Budget Summary
           </h2>
 
           {/* Budget ID Input */}
@@ -95,14 +95,14 @@ export default function DashboardPage() {
               className="flex-1 px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               value={budgetId}
               onChange={(e) => setBudgetId(e.target.value)}
-              placeholder="Budget ID girin..."
+              placeholder="Enter Budget ID..."
             />
             <button
               onClick={handleLoadBudgetInfo}
               disabled={loading}
               className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
             >
-              {loading ? "Yükleniyor..." : "Yükle"}
+              {loading ? "Loading..." : "Load"}
             </button>
           </div>
 
@@ -111,30 +111,30 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-slate-700/30 rounded-lg p-4">
                 <p className="text-xs uppercase text-slate-400 mb-1">
-                  Toplam Bütçe
+                  Total Budget
                 </p>
                 <p className="text-2xl font-bold text-slate-100">
-                  {budgetInfo.total} TL
+                  {budgetInfo.total} SUI
                 </p>
               </div>
               <div className="bg-slate-700/30 rounded-lg p-4">
                 <p className="text-xs uppercase text-slate-400 mb-1">
-                  Harcanan
+                  Spent
                 </p>
                 <p className="text-2xl font-bold text-red-400">
-                  {budgetInfo.spent} TL
+                  {budgetInfo.spent} SUI
                 </p>
               </div>
               <div className="bg-slate-700/30 rounded-lg p-4">
-                <p className="text-xs uppercase text-slate-400 mb-1">Kalan</p>
+                <p className="text-xs uppercase text-slate-400 mb-1">Remaining</p>
                 <p className="text-2xl font-bold text-emerald-400">
-                  {remaining} TL
+                  {remaining} SUI
                 </p>
               </div>
             </div>
           ) : (
             <div className="text-center py-8 text-slate-400">
-              <p>Bütçe bilgilerini görmek için Budget ID girin.</p>
+              <p>Enter a Budget ID to view budget information.</p>
             </div>
           )}
         </div>
@@ -143,19 +143,19 @@ export default function DashboardPage() {
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-100">
-              Son Harcamalar
+              Recent Spending
             </h2>
             <button
               onClick={handleLoadLogs}
               className="text-sm text-emerald-400 hover:text-emerald-300"
             >
-              Yenile
+              Refresh
             </button>
           </div>
 
           {logs.length === 0 ? (
             <div className="text-center py-8 text-slate-400">
-              <p>Henüz harcama kaydı bulunmuyor.</p>
+              <p>No spending records yet.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -173,12 +173,12 @@ export default function DashboardPage() {
                         {log.receiver.slice(0, 8)}…{log.receiver.slice(-4)}
                       </p>
                       <p className="text-xs text-slate-400">
-                        {new Date(log.timestampMs).toLocaleDateString("tr-TR")}
+                        {new Date(log.timestampMs).toLocaleDateString("en-US")}
                       </p>
                     </div>
                   </div>
                   <p className="text-sm font-semibold text-red-400">
-                    -{log.amount} TL
+                    -{log.amount} SUI
                   </p>
                 </div>
               ))}

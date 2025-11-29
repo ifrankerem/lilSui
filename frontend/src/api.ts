@@ -6,7 +6,7 @@ const api = axios.create({
   baseURL: BACKEND_URL,
 });
 
-// ---------- Tipler ----------
+// ---------- Types ----------
 
 export type BudgetDto = {
   id: string;
@@ -38,15 +38,15 @@ export type LogEntry = {
   receiver: string;
 };
 
-// ---------- Endpoint wrapper'ları ----------
+// ---------- Endpoint wrappers ----------
 
 export async function apiHealth() {
   const res = await api.get("/");
   return res.data;
 }
 
-export async function apiCreateBudget(name: string, total: number) {
-  const res = await api.post("/budgets", { name, total });
+export async function apiCreateBudget(adminCapId: string, name: string, coinObjectId: string) {
+  const res = await api.post("/budgets", { adminCapId, name, coinObjectId });
   return res.data as {
     txDigest: string;
     budgetId: string;
@@ -76,6 +76,16 @@ export async function apiCreateProposal(params: {
 export async function apiGetProposal(id: string): Promise<ProposalDto> {
   const res = await api.get(`/proposals/${id}`);
   return res.data as ProposalDto;
+}
+
+export async function apiGetAllProposals(): Promise<ProposalDto[]> {
+  const res = await api.get("/proposals");
+  return res.data as ProposalDto[];
+}
+
+export async function apiGetUserProposals(userAddress: string): Promise<ProposalDto[]> {
+  const res = await api.get(`/proposals/user/${userAddress}`);
+  return res.data as ProposalDto[];
 }
 
 export async function apiVoteOnProposal(
