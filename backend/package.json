@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-	"dev": "ts-node-dev --respawn src/server.ts"
+    "dev": "ts-node-dev --respawn src/server.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@mysten/enoki": "^0.12.12",
     "@mysten/sui.js": "^0.54.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

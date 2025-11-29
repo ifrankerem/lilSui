@@ -1,16 +1,45 @@
 // src/pages/DashboardPage.tsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   apiCreateBudget,
   apiCreateProposal,
-  apiVoteOnProposal,
+  apiVote,
   apiGetLogs,
   apiGetBudget,
   apiGetProposal,
-  type LogEntry,
-  type BudgetDto,
-  type ProposalDto,
-} from "../../../backend/src/lib/api";
+} from "../api";
+
+// ---- Tipler (frontend için burada tanımlıyoruz) ----
+type LogEntry = {
+  txDigest: string;
+  timestampMs: number;
+  budgetId: string;
+  proposalId: string;
+  amount: number;
+  receiver: string;
+};
+
+type BudgetDto = {
+  id: string;
+  name: string;
+  total: number;
+  spent: number;
+};
+
+type ProposalDto = {
+  id: string;
+  title: string;
+  description: string;
+  amount: number;
+  yesVotes: number;
+  noVotes: number;
+  totalVoters: number;
+  votesCast: number;
+  statusRaw: any;
+  receiver: string;
+  participants: string[];
+};
 
 function prettyStatus(statusRaw: any): string {
   if (!statusRaw) return "-";
@@ -22,6 +51,8 @@ function prettyStatus(statusRaw: any): string {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
+
   // 1. Create Budget form state
   const [budgetName, setBudgetName] = useState("Beta Budget");
   const [budgetTotal, setBudgetTotal] = useState(1000);
@@ -54,9 +85,8 @@ export default function DashboardPage() {
       setLoading(true);
       const res = await apiCreateBudget(budgetName, budgetTotal);
 
-      // sadece ID'yi state'e yaz, detay çekme
       setBudgetId(res.budgetId);
-      setBudgetInfo(null); // eski kartı temizle
+      setBudgetInfo(null);
       console.log("Created budget:", res);
     } catch (e: any) {
       setError(e.message ?? String(e));
@@ -104,7 +134,6 @@ export default function DashboardPage() {
         participants,
       });
 
-      // sadece ID'yi state'e yaz, detay çekme
       setProposalId(res.proposalId);
       setProposalInfo(null);
       console.log("Created proposal:", res);
@@ -141,10 +170,10 @@ export default function DashboardPage() {
       setError(null);
       setLoading(true);
 
-      const res = await apiVoteOnProposal(proposalId, budgetId, choice);
+      // frontend/api.ts’teki apiVote imzasına göre:
+      const res = await apiVote(proposalId, { budgetId, choice });
       console.log("Vote result:", res);
 
-      // Oy verdikten sonra proposal detayını güncelle
       const info = await apiGetProposal(proposalId);
       setProposalInfo(info);
     } catch (e: any) {
@@ -292,12 +321,28 @@ export default function DashboardPage() {
           >
             Create Proposal
           </button>
+
+          {/* Dashboard içinden proposal detail sayfasına git */}
+          <button
+            onClick={() => {
+              if (!proposalId) {
+                setError("Önce bir proposalId seç / oluştur.");
+                return;
+              }
+              navigate(`/proposals/${proposalId}`);
+            }}
+            className="px-3 py-1 rounded bg-sky-500 hover:bg-sky-600 text-xs text-black font-semibold"
+          >
+            Open Proposal Detail Page
+          </button>
+
           <button
             onClick={handleLoadProposalInfo}
             className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs"
           >
-            Load Proposal Detail
+            Load Proposal Detail (inline)
           </button>
+
           <span className="text-sm">
             Current proposalId:{" "}
             <input
@@ -390,9 +435,8 @@ export default function DashboardPage() {
           <ul className="space-y-1 text-xs">
             {logs.map((log) => (
               <li key={log.txDigest} className="font-mono">
-                {log.txDigest.slice(0, 8)}… •{" "}
-                {log.proposalId.slice(0, 8)}… • {log.amount} •{" "}
-                {log.receiver.slice(0, 8)}… •{" "}
+                {log.txDigest.slice(0, 8)}… • {log.proposalId.slice(0, 8)}… •{" "}
+                {log.amount} • {log.receiver.slice(0, 8)}… •{" "}
                 {new Date(log.timestampMs).toLocaleString()}
               </li>
             ))}

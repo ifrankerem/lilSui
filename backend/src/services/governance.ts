@@ -1,228 +1,185 @@
-// src/services/governance.ts
+// backend/src/services/governance.ts
 import { TransactionBlock } from "@mysten/sui.js/transactions";
-import type { SuiObjectResponse } from "@mysten/sui.js/client";
-
+import { PACKAGE_ID } from "../config/sui";
+import { sponsorAndExecuteWithEnoki } from "../lib/enokiSponsor";
 import { suiClient } from "../lib/suiClient";
-import { getSponsorKeypair } from "../lib/keypair";
-import { PACKAGE_ID, SPENDING_EVENT_TYPE } from "../config/sui";
 
-/**
- * Ortak helper: getObject sonucundan fields çek.
- */
-function extractFields(res: SuiObjectResponse): any {
-  if (res.error) {
-    // error.message yok; komple stringify edelim
-    throw new Error("getObject error: " + JSON.stringify(res.error));
-  }
-
-  const content = (res.data as any)?.content;
-  if (!content || content.dataType !== "moveObject") {
-    throw new Error("Unexpected object content");
-  }
-
-  return content.fields;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                READ FONKS.                                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Tek bütçeyi oku
- */
-export async function getBudget(budgetId: string) {
-  const res = await suiClient.getObject({
-    id: budgetId,
-    options: { showContent: true },
-  });
-
-  const fields = extractFields(res);
-
-  return {
-    id: budgetId,
-    name: fields.name as string,
-    total: Number(fields.total),
-    spent: Number(fields.spent),
-  };
-}
-
-/**
- * Tek proposal oku
- */
-export async function getProposal(proposalId: string) {
-  const res = await suiClient.getObject({
-    id: proposalId,
-    options: { showContent: true },
-  });
-
-  const fields = extractFields(res);
-
-  return {
-    id: proposalId,
-    title: fields.title as string,
-    description: fields.description as string,
-    amount: Number(fields.amount),
-    yesVotes: Number(fields.yes_votes),
-    noVotes: Number(fields.no_votes),
-    totalVoters: Number(fields.total_voters),
-    votesCast: Number(fields.votes_cast),
-    statusRaw: fields.status, // enum'u UI'da decode edersin
-    receiver: fields.receiver as string,
-    participants: fields.participants as string[],
-  };
-}
-
-/**
- * SpendingEvent loglarını getir
- */
-export async function getSpendingEvents() {
-  const res = await suiClient.queryEvents({
-    query: { MoveEventType: SPENDING_EVENT_TYPE },
-    limit: 50,
-    order: "descending",
-  });
-
-  return res.data.map((e) => ({
-    txDigest: e.id.txDigest,
-    timestampMs: Number(e.timestampMs ?? 0),
-    budgetId: (e.parsedJson as any).budget_id as string,
-    proposalId: (e.parsedJson as any).proposal_id as string,
-    amount: Number((e.parsedJson as any).amount),
-    receiver: (e.parsedJson as any).receiver as string,
-  }));
-}
-
-/* -------------------------------------------------------------------------- */
-/*                              WRITE / ON-CHAIN                              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Bütçeyi on-chain oluştur.
- * server.ts → POST /budgets burayı çağırıyor.
- */
+// ----------------------------------------------------
+// 1) BÜTÇE OLUŞTURMA  (Enoki sponsorlu)
+// ----------------------------------------------------
 export async function createBudgetOnChain(name: string, total: number) {
-  const signer = getSponsorKeypair();
   const tx = new TransactionBlock();
 
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::create_budget`,
-    arguments: [
-      tx.pure.string(name),
-      tx.pure.u64(String(total)),
-    ],
+    arguments: [tx.pure.string(name), tx.pure.u64(String(total))],
   });
 
-  tx.setGasBudget(50_000_000);
-
-  const result = await suiClient.signAndExecuteTransactionBlock({
-    signer,
-    transactionBlock: tx,
-    options: { showEffects: true, showObjectChanges: true },
+  const res = await sponsorAndExecuteWithEnoki(tx, {
+    allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_budget`],
   });
 
-  const created = (result.objectChanges || []).filter(
+  const created = (res.objectChanges ?? []).find(
     (c: any) =>
       c.type === "created" &&
-      c.objectType?.includes("governance::CommunityBudget"),
-  ) as any[];
+      typeof c.objectType === "string" &&
+      c.objectType.includes("governance::CommunityBudget"),
+  ) as any | undefined;
 
-  const budgetId = created[0]?.objectId;
+  if (!created) {
+    throw new Error("create_budget: CommunityBudget object not found in effects");
+  }
 
   return {
-    txDigest: result.digest,
-    budgetId,
-    effects: result.effects,
+    txDigest: res.digest,
+    budgetId: created.objectId,
+    effects: res.effects,
   };
 }
 
-type CreateProposalArgs = {
+// ----------------------------------------------------
+// 2) PROPOSAL OLUŞTURMA (Enoki sponsorlu)
+// ----------------------------------------------------
+export async function createProposalOnChain(input: {
   title: string;
   description: string;
   amount: number;
   receiver: string;
   participants: string[];
-};
-
-/**
- * Proposal'ı on-chain oluştur.
- * server.ts → POST /proposals burayı çağırıyor.
- */
-export async function createProposalOnChain(args: CreateProposalArgs) {
-  const { title, description, amount, receiver, participants } = args;
-
-  const signer = getSponsorKeypair();
+}) {
   const tx = new TransactionBlock();
 
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::create_proposal`,
     arguments: [
-      tx.pure.string(title),
-      tx.pure.string(description),
-      tx.pure.u64(String(amount)),
-      tx.pure.address(receiver),
-      tx.pure(participants), // vector<address>
+      tx.pure.string(input.title),
+      tx.pure.string(input.description),
+      tx.pure.u64(String(input.amount)),
+      tx.pure.address(input.receiver),
+      tx.pure(input.participants),
     ],
   });
 
-  tx.setGasBudget(50_000_000);
-
-  const result = await suiClient.signAndExecuteTransactionBlock({
-    signer,
-    transactionBlock: tx,
-    options: { showEffects: true, showObjectChanges: true },
+  const res = await sponsorAndExecuteWithEnoki(tx, {
+    allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_proposal`],
+    allowedAddresses: [input.receiver],
   });
 
-  const created = (result.objectChanges || []).filter(
+  const created = (res.objectChanges ?? []).find(
     (c: any) =>
       c.type === "created" &&
-      c.objectType?.includes("governance::Proposal"),
-  ) as any[];
+      typeof c.objectType === "string" &&
+      c.objectType.includes("governance::Proposal"),
+  ) as any | undefined;
 
-  const proposalId = created[0]?.objectId;
+  if (!created) {
+    throw new Error("create_proposal: Proposal object not found in effects");
+  }
 
   return {
-    txDigest: result.digest,
-    proposalId,
-    effects: result.effects,
+    txDigest: res.digest,
+    proposalId: created.objectId,
+    effects: res.effects,
   };
 }
 
-type VoteArgs = {
+// ----------------------------------------------------
+// 3) OY VERME (Enoki sponsorlu)
+// ----------------------------------------------------
+export async function voteOnProposalOnChain(input: {
   budgetId: string;
   proposalId: string;
   choice: boolean;
-};
-
-/**
- * Proposal'a oy ver (yes/no).
- * server.ts → POST /proposals/:proposalId/vote burayı çağırıyor.
- */
-export async function voteOnProposalOnChain(args: VoteArgs) {
-  const { budgetId, proposalId, choice } = args;
-
-  const signer = getSponsorKeypair();
+}) {
   const tx = new TransactionBlock();
 
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::vote`,
     arguments: [
-      tx.object(budgetId),
-      tx.object(proposalId),
-      tx.pure(choice),
+      tx.object(input.budgetId),
+      tx.object(input.proposalId),
+      tx.pure(input.choice), // true = yes, false = no
     ],
   });
 
-  tx.setGasBudget(50_000_000);
-
-  const result = await suiClient.signAndExecuteTransactionBlock({
-    signer,
-    transactionBlock: tx,
-    options: { showEffects: true, showEvents: true },
+  const res = await sponsorAndExecuteWithEnoki(tx, {
+    allowedMoveCallTargets: [`${PACKAGE_ID}::governance::vote`],
+    allowedAddresses: [input.budgetId, input.proposalId],
   });
 
   return {
-    txDigest: result.digest,
-    effects: result.effects,
-    events: result.events,
+    txDigest: res.digest,
+    effects: res.effects,
   };
+}
+
+// ----------------------------------------------------
+// 4) BÜTÇEYİ OKUMA  (Sadece read; Enoki yok)
+// ----------------------------------------------------
+export async function getBudget(budgetId: string) {
+  const obj = await suiClient.getObject({
+    id: budgetId,
+    options: { showContent: true },
+  });
+
+  const data = (obj.data?.content as any)?.fields ?? {};
+
+  return {
+    id: budgetId,
+    name: data.name ?? "",
+    total: Number(data.total ?? 0),
+    spent: Number(data.spent ?? 0),
+  };
+}
+
+// ----------------------------------------------------
+// 5) PROPOSAL OKUMA
+// ----------------------------------------------------
+export async function getProposal(proposalId: string) {
+  const obj = await suiClient.getObject({
+    id: proposalId,
+    options: { showContent: true },
+  });
+
+  const data = (obj.data?.content as any)?.fields ?? {};
+
+  return {
+    id: proposalId,
+    title: data.title ?? "",
+    description: data.description ?? "",
+    amount: Number(data.amount ?? 0),
+    yesVotes: Number(data.yes_votes ?? data.yesVotes ?? 0),
+    noVotes: Number(data.no_votes ?? data.noVotes ?? 0),
+    totalVoters: Number(data.total_voters ?? data.totalVoters ?? 0),
+    votesCast: Number(data.votes_cast ?? data.votesCast ?? 0),
+    statusRaw: data.status ?? data.status_raw ?? data.statusRaw,
+    receiver: data.receiver ?? "",
+    participants: (data.participants as string[]) ?? [],
+  };
+}
+
+// ----------------------------------------------------
+// 6) HARCAMA LOG EVENTLERİ
+// ----------------------------------------------------
+export async function getSpendingEvents() {
+  const ev = await suiClient.queryEvents({
+    query: {
+      MoveEventType: `${PACKAGE_ID}::governance::SpendingEvent`,
+    },
+    limit: 50,
+  });
+
+  return ev.data.map((e: any) => {
+    const parsed = (e.parsedJson ?? {}) as any;
+    return {
+      txDigest: e.id?.txDigest ?? e.txDigest ?? "",
+      timestampMs: Number(e.timestampMs ?? 0),
+      budgetId:
+        parsed.budget_id ?? parsed.budget ?? parsed.budgetId ?? "unknown",
+      proposalId:
+        parsed.proposal_id ?? parsed.proposal ?? parsed.proposalId ?? "unknown",
+      amount: Number(parsed.amount ?? 0),
+      receiver: parsed.receiver ?? "",
+    };
+  });
 }

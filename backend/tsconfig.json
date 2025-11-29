@@ -13,5 +13,5 @@
     // BUNU EKLE veya true yazıyorsa false yap
     "verbatimModuleSyntax": false
   },
-  "include": ["src"]
+  "include": ["src", "src/libsrc/confignfig"]
 }

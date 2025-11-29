@@ -1,43 +1,29 @@
 // src/App.tsx
-import { Routes, Route, Link, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
-import ChatPage from "./pages/ChatPage";
+import { ProposalDetailPage } from "./pages/ProposalDetailPage";
 import ZkGoogleCallbackPage from "./pages/ZkGoogleCallbackPage";
-import { WalletBar } from "./components/WalletBar";
+import ChatPage from "./pages/ChatPage";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
-      {/* Üst bar */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
-        <nav className="flex gap-4 text-sm">
-          <Link to="/login" className="hover:text-emerald-400">
-            Login
-          </Link>
-          <Link to="/dashboard" className="hover:text-emerald-400">
-            Dashboard
-          </Link>
-          <Link to="/chat" className="hover:text-emerald-400">
-            Chat
-          </Link>
-        </nav>
+    <Routes>
+      {/* Auth / giriş */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/zk-google-callback" element={<ZkGoogleCallbackPage />} />
 
-        {/* Sağ üstte cüzdan durumu */}
-        <WalletBar />
-      </header>
+      {/* Dashboard & proposal detay */}
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/proposals/:proposalId" element={<ProposalDetailPage />} />
 
-      {/* Sayfa içeriği */}
-      <main className="flex-1 p-4">
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-		  <Route path="/zklogin-google-callback" element={<ZkGoogleCallbackPage />} />
-          {/* Varsayılan: /login */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </main>
-    </div>
+      {/* Proposal chat kanalı */}
+      <Route path="/chat/:channelId" element={<ChatPage />} />
+
+		<Route path="/proposals/:proposalId" element={<ProposalDetailPage />} />
+		<Route path="/chat/:channelId" element={<ChatPage />} />
+      {/* Default: /login'e yönlendirme */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }

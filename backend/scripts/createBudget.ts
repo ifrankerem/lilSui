@@ -1,8 +1,8 @@
 // src/scripts/createBudget.ts
 import { TransactionBlock } from "@mysten/sui.js/transactions";
-import { suiClient } from "../lib/suiClient";
-import { PACKAGE_ID } from "../config/sui";
-import { getSponsorKeypair } from "../lib/keypair";
+import { suiClient } from "../src/lib/suiClient";
+import { PACKAGE_ID } from "../src/config/sui";
+import { getSponsorKeypair } from "../src/lib/keypair";
 
 async function main() {
   const keypair = getSponsorKeypair();
