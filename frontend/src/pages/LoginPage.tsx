@@ -17,12 +17,12 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const account = useCurrentAccount();
 
-  // Enoki için:
+  // For Enoki:
   const { mutate: connect } = useConnectWallet();
   const allWallets = useWallets();
   const enokiWallets = allWallets.filter(isEnokiWallet);
 
-  // provider -> wallet map'i (google, facebook vs)
+  // provider -> wallet map (google, facebook, etc)
   const walletsByProvider = enokiWallets.reduce(
     (map, wallet) =>
       map.set((wallet as EnokiWallet).provider, wallet as EnokiWallet),
@@ -45,20 +45,20 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-emerald-400 mb-2">
             Community Budget
           </h1>
-          <p className="text-slate-400 text-lg">Hoş Geldiniz</p>
+          <p className="text-slate-400 text-lg">Welcome</p>
         </div>
 
         {/* Login Card */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 space-y-6">
           <p className="text-center text-sm text-slate-400">
-            Bütçe yönetim sistemine giriş yapmak için bir yöntem seçin.
+            Choose a method to log in to the budget management system.
           </p>
 
           {/* Connected State */}
           {account ? (
             <div className="space-y-4">
               <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
-                <p className="text-emerald-400 font-medium">Giriş Başarılı!</p>
+                <p className="text-emerald-400 font-medium">Login Successful!</p>
                 <p className="text-xs text-slate-400 mt-1 font-mono">
                   {account.address.slice(0, 12)}…{account.address.slice(-8)}
                 </p>
@@ -67,7 +67,7 @@ export default function LoginPage() {
                 onClick={() => navigate("/dashboard")}
                 className="w-full px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors"
               >
-                Dashboard'a Git →
+                Go to Dashboard →
               </button>
             </div>
           ) : (
@@ -102,22 +102,21 @@ export default function LoginPage() {
                 </button>
               ) : (
                 <p className="text-center text-sm text-red-400">
-                  Google Enoki wallet bulunamadı. Lütfen yapılandırmayı kontrol
-                  edin.
+                  Google Enoki wallet not found. Please check configuration.
                 </p>
               )}
 
               {/* Divider */}
               <div className="flex items-center gap-4">
                 <div className="flex-1 h-px bg-slate-600"></div>
-                <span className="text-slate-500 text-sm">veya</span>
+                <span className="text-slate-500 text-sm">or</span>
                 <div className="flex-1 h-px bg-slate-600"></div>
               </div>
 
               {/* Wallet Connect Button (dApp Kit) */}
               <div className="flex flex-col items-center gap-2">
                 <ConnectButton
-                  connectText="💳 Wallet ile Bağlan"
+                  connectText="💳 Connect Wallet"
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-slate-100 font-semibold hover:bg-slate-600 transition-colors border border-slate-600"
                 />
                 <p className="text-center text-xs text-slate-500">
@@ -130,7 +129,7 @@ export default function LoginPage() {
 
         {/* Footer Info */}
         <p className="text-center text-xs text-slate-500 mt-8">
-          Sui blockchain üzerinde şeffaf bütçe yönetimi
+          Transparent budget management on Sui blockchain
         </p>
       </div>
     </div>

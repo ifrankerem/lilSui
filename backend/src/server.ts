@@ -1,5 +1,5 @@
 // src/server.ts
-import "dotenv/config";   // 👈 BUNU EN ÜSTE KOY
+import "dotenv/config";   // Put this at the top
 
 import express from "express";
 import cors from "cors";
@@ -10,6 +10,8 @@ import {
   getBudget,
   getProposal,
   getSpendingEvents,
+  getAllProposals,
+  getProposalsByUser,
 } from "./services/governance";
 
 
@@ -27,18 +29,18 @@ app.get("/", (_req, res) => {
 });
 
 /**
- * Yeni bütçe oluştur
+ * Create new budget (requires AdminCap and SUI coin)
  * POST /budgets
- * body: { name: string, total: number }
+ * body: { adminCapId: string, name: string, coinObjectId: string }
  */
 app.post("/budgets", async (req, res) => {
   try {
-    const { name, total } = req.body;
-    if (!name || total == null) {
-      return res.status(400).json({ error: "name and total are required" });
+    const { adminCapId, name, coinObjectId } = req.body;
+    if (!adminCapId || !name || !coinObjectId) {
+      return res.status(400).json({ error: "adminCapId, name, and coinObjectId are required" });
     }
 
-    const result = await createBudgetOnChain(name, Number(total));
+    const result = await createBudgetOnChain(adminCapId, name, coinObjectId);
     res.json(result);
   } catch (e: any) {
     console.error(e);
@@ -47,7 +49,7 @@ app.post("/budgets", async (req, res) => {
 });
 
 /**
- * Tek bütçeyi oku
+ * Read single budget
  * GET /budgets/:id
  */
 app.get("/budgets/:id", async (req, res) => {
@@ -61,7 +63,7 @@ app.get("/budgets/:id", async (req, res) => {
 });
 
 /**
- * Yeni proposal oluştur
+ * Create new proposal
  * POST /proposals
  * body: {
  *   title: string;
@@ -101,7 +103,36 @@ app.post("/proposals", async (req, res) => {
 });
 
 /**
- * Tek proposal oku
+ * Get all proposals
+ * GET /proposals
+ */
+app.get("/proposals", async (_req, res) => {
+  try {
+    const proposals = await getAllProposals();
+    res.json(proposals);
+  } catch (e: any) {
+    console.error(e);
+    res.status(500).json({ error: e.message ?? "unknown error" });
+  }
+});
+
+/**
+ * Get proposals for a specific user (participant)
+ * GET /proposals/user/:address
+ */
+app.get("/proposals/user/:address", async (req, res) => {
+  try {
+    const { address } = req.params;
+    const proposals = await getProposalsByUser(address);
+    res.json(proposals);
+  } catch (e: any) {
+    console.error(e);
+    res.status(500).json({ error: e.message ?? "unknown error" });
+  }
+});
+
+/**
+ * Read single proposal
  * GET /proposals/:id
  */
 app.get("/proposals/:id", async (req, res) => {
@@ -115,7 +146,7 @@ app.get("/proposals/:id", async (req, res) => {
 });
 
 /**
- * Oy ver
+ * Vote on proposal
  * POST /proposals/:proposalId/vote
  * body: { budgetId: string, choice: boolean }
  */
@@ -144,7 +175,7 @@ app.post("/proposals/:proposalId/vote", async (req, res) => {
 });
 
 /**
- * Harcama loglarını getir
+ * Get spending logs
  * GET /logs
  */
 app.get("/logs", async (_req, res) => {

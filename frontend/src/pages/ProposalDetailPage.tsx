@@ -23,7 +23,7 @@ export function ProposalDetailPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center py-12">
-          <div className="text-slate-400">Yükleniyor...</div>
+          <div className="text-slate-400">Loading...</div>
         </div>
       </MainLayout>
     );
@@ -33,7 +33,7 @@ export function ProposalDetailPage() {
     return (
       <MainLayout>
         <div className="bg-red-900/40 border border-red-500 px-4 py-3 rounded-lg text-sm text-red-300">
-          Proposal bulunamadı veya yüklenirken hata oluştu.
+          Proposal not found or an error occurred while loading.
         </div>
       </MainLayout>
     );
@@ -47,7 +47,7 @@ export function ProposalDetailPage() {
           onClick={() => navigate(-1)}
           className="text-sm text-slate-400 hover:text-slate-300 flex items-center gap-2"
         >
-          ← Geri
+          ← Back
         </button>
 
         {/* Proposal Header */}
@@ -71,15 +71,15 @@ export function ProposalDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Amount */}
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
-            <p className="text-xs uppercase text-slate-400 mb-1">Miktar</p>
+            <p className="text-xs uppercase text-slate-400 mb-1">Amount</p>
             <p className="text-2xl font-bold text-emerald-400">
-              {proposal.amount} TL
+              {proposal.amount} SUI
             </p>
           </div>
 
           {/* Votes */}
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
-            <p className="text-xs uppercase text-slate-400 mb-1">Oylar</p>
+            <p className="text-xs uppercase text-slate-400 mb-1">Votes</p>
             <div className="flex items-center gap-4 text-lg">
               <span className="text-emerald-400">
                 ✓ {proposal.yesVotes}
@@ -94,7 +94,7 @@ export function ProposalDetailPage() {
 
         {/* Receiver */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
-          <p className="text-xs uppercase text-slate-400 mb-2">Alıcı</p>
+          <p className="text-xs uppercase text-slate-400 mb-2">Receiver</p>
           <p className="text-sm text-slate-100 font-mono break-all">
             {proposal.receiver}
           </p>
@@ -103,7 +103,7 @@ export function ProposalDetailPage() {
         {/* Participants */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
           <p className="text-xs uppercase text-slate-400 mb-2">
-            Katılımcılar ({proposal.participants.length})
+            Participants ({proposal.participants.length})
           </p>
           <div className="space-y-1">
             {proposal.participants.map((p, i) => (
