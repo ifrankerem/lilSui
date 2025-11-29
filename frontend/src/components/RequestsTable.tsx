@@ -56,9 +56,9 @@ export function RequestsTable({ proposals, isLoading }: RequestsTableProps) {
               key={proposal.id}
               className="hover:bg-slate-800/30 transition-colors"
             >
-              <td className="px-4 py-3 text-sm text-slate-300">
-                {/* Placeholder date - API doesn't provide timestamp */}
-                -
+              <td className="px-4 py-3 text-sm text-slate-400">
+                {/* API doesn't provide timestamp for proposals */}
+                N/A
               </td>
               <td className="px-4 py-3">
                 <span className="text-sm text-slate-300 font-mono">

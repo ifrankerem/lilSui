@@ -15,8 +15,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Count pending requests (this would come from a real API)
-  const pendingCount = 3; // Placeholder
+  // In a real implementation, this would be fetched from the API
+  // For now, we don't show pending count if no data is available
+  const pendingCount = 0;
 
   useEffect(() => {
     // Load logs on mount
