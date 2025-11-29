@@ -20,10 +20,13 @@ export default function RequestsPage() {
     if (!account?.address || autoLoaded) return;
 
     async function loadUserProposals() {
+      const userAddress = account?.address;
+      if (!userAddress) return;
+      
       try {
         setError(null);
         setLoading(true);
-        const userProposals = await apiGetUserProposals(account!.address);
+        const userProposals = await apiGetUserProposals(userAddress);
         setProposals(userProposals);
         setAutoLoaded(true);
       } catch (e: unknown) {

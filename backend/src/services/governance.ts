@@ -195,18 +195,16 @@ export async function getSpendingEvents() {
 
 // ----------------------------------------------------
 // 7) GET ALL PROPOSALS (using indexer/RPC)
+// Note: This is a limited implementation. In production, use an indexer like
+// SuiVision or custom indexer to track all shared proposal objects.
+// For now, this returns proposals from SpendingEvents (executed proposals only).
+// The frontend also supports searching by proposal ID for pending proposals.
 // ----------------------------------------------------
 export async function getAllProposals() {
-  const objs = await suiClient.getOwnedObjects({
-    owner: "0x0000000000000000000000000000000000000000000000000000000000000000", // shared objects don't have an owner
-  });
-
-  // For shared objects, we need to query by type
-  // This is a simplified approach - in production you would use an indexer
-  const proposalType = `${PACKAGE_ID}::governance::Proposal`;
-  
   try {
-    // Query events to get proposal IDs (SpendingEvent contains proposal IDs)
+    // Query SpendingEvents to get proposal IDs of executed proposals
+    // Note: This only captures executed proposals. For a complete list,
+    // you would need an indexer that tracks all Proposal object creations.
     const events = await suiClient.queryEvents({
       query: {
         MoveEventType: `${PACKAGE_ID}::governance::SpendingEvent`,
