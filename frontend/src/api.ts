@@ -6,6 +6,40 @@ const api = axios.create({
   baseURL: BACKEND_URL,
 });
 
+// ---------- Tipler ----------
+
+export type BudgetDto = {
+  id: string;
+  name: string;
+  total: number;
+  spent: number;
+};
+
+export type ProposalDto = {
+  id: string;
+  title: string;
+  description: string;
+  amount: number;
+  receiver: string;
+  participants: string[];
+  yesVotes: number;
+  noVotes: number;
+  votesCast: number;
+  totalVoters: number;
+  statusRaw: unknown;
+};
+
+export type LogEntry = {
+  txDigest: string;
+  timestampMs: number;
+  budgetId: string;
+  proposalId: string;
+  amount: number;
+  receiver: string;
+};
+
+// ---------- Endpoint wrapper'ları ----------
+
 export async function apiHealth() {
   const res = await api.get("/");
   return res.data;
@@ -20,14 +54,9 @@ export async function apiCreateBudget(name: string, total: number) {
   };
 }
 
-export async function apiGetBudget(id: string) {
+export async function apiGetBudget(id: string): Promise<BudgetDto> {
   const res = await api.get(`/budgets/${id}`);
-  return res.data as {
-    id: string;
-    name: string;
-    total: number;
-    spent: number;
-  };
+  return res.data as BudgetDto;
 }
 
 export async function apiCreateProposal(params: {
@@ -44,27 +73,24 @@ export async function apiCreateProposal(params: {
   };
 }
 
-export async function apiGetProposal(id: string) {
+export async function apiGetProposal(id: string): Promise<ProposalDto> {
   const res = await api.get(`/proposals/${id}`);
+  return res.data as ProposalDto;
+}
+
+export async function apiVoteOnProposal(
+  proposalId: string,
+  budgetId: string,
+  choice: boolean,
+) {
+  const res = await api.post(`/proposals/${proposalId}/vote`, {
+    budgetId,
+    choice,
+  });
   return res.data;
 }
 
-export async function apiVote(proposalId: string, body: {
-  budgetId: string;
-  choice: boolean;
-}) {
-  const res = await api.post(`/proposals/${proposalId}/vote`, body);
-  return res.data;
-}
-
-export async function apiGetLogs() {
+export async function apiGetLogs(): Promise<LogEntry[]> {
   const res = await api.get("/logs");
-  return res.data as Array<{
-    txDigest: string;
-    timestampMs: number;
-    budgetId: string;
-    proposalId: string;
-    amount: number;
-    receiver: string;
-  }>;
+  return res.data as LogEntry[];
 }

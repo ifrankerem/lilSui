@@ -4,7 +4,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import { ProposalDetailPage } from "./pages/ProposalDetailPage";
 import ZkGoogleCallbackPage from "./pages/ZkGoogleCallbackPage";
-import ChatPage from "./pages/ChatPage";
 
 export default function App() {
   return (
@@ -17,10 +16,7 @@ export default function App() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/proposals/:proposalId" element={<ProposalDetailPage />} />
 
-      {/* Proposal chat kanalı */}
-      <Route path="/chat/:channelId" element={<ChatPage />} />
-
-      {/* Default: /login'e yönlendirme */}
+      {/* Default: /login'e yönlendir */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

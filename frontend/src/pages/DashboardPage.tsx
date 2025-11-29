@@ -1,45 +1,16 @@
 // src/pages/DashboardPage.tsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   apiCreateBudget,
   apiCreateProposal,
-  apiVote,
+  apiVoteOnProposal,
   apiGetLogs,
   apiGetBudget,
   apiGetProposal,
+  type LogEntry,
+  type BudgetDto,
+  type ProposalDto,
 } from "../api";
-
-// ---- Tipler (frontend için burada tanımlıyoruz) ----
-type LogEntry = {
-  txDigest: string;
-  timestampMs: number;
-  budgetId: string;
-  proposalId: string;
-  amount: number;
-  receiver: string;
-};
-
-type BudgetDto = {
-  id: string;
-  name: string;
-  total: number;
-  spent: number;
-};
-
-type ProposalDto = {
-  id: string;
-  title: string;
-  description: string;
-  amount: number;
-  yesVotes: number;
-  noVotes: number;
-  totalVoters: number;
-  votesCast: number;
-  statusRaw: any;
-  receiver: string;
-  participants: string[];
-};
 
 function prettyStatus(statusRaw: any): string {
   if (!statusRaw) return "-";
@@ -51,14 +22,11 @@ function prettyStatus(statusRaw: any): string {
 }
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
-
   // 1. Create Budget form state
   const [budgetName, setBudgetName] = useState("Beta Budget");
   const [budgetTotal, setBudgetTotal] = useState(1000);
   const [budgetId, setBudgetId] = useState("");
 
-  // Budget detay kartı
   const [budgetInfo, setBudgetInfo] = useState<BudgetDto | null>(null);
 
   // 2. Create Proposal form state
@@ -69,7 +37,6 @@ export default function DashboardPage() {
   const [participantsText, setParticipantsText] = useState("");
   const [proposalId, setProposalId] = useState("");
 
-  // Proposal detay kartı
   const [proposalInfo, setProposalInfo] = useState<ProposalDto | null>(null);
 
   // 3. Logs + loading
@@ -170,8 +137,7 @@ export default function DashboardPage() {
       setError(null);
       setLoading(true);
 
-      // frontend/api.ts’teki apiVote imzasına göre:
-      const res = await apiVote(proposalId, { budgetId, choice });
+      const res = await apiVoteOnProposal(proposalId, budgetId, choice);
       console.log("Vote result:", res);
 
       const info = await apiGetProposal(proposalId);
@@ -321,28 +287,12 @@ export default function DashboardPage() {
           >
             Create Proposal
           </button>
-
-          {/* Dashboard içinden proposal detail sayfasına git */}
-          <button
-            onClick={() => {
-              if (!proposalId) {
-                setError("Önce bir proposalId seç / oluştur.");
-                return;
-              }
-              navigate(`/proposals/${proposalId}`);
-            }}
-            className="px-3 py-1 rounded bg-sky-500 hover:bg-sky-600 text-xs text-black font-semibold"
-          >
-            Open Proposal Detail Page
-          </button>
-
           <button
             onClick={handleLoadProposalInfo}
             className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs"
           >
-            Load Proposal Detail (inline)
+            Load Proposal Detail
           </button>
-
           <span className="text-sm">
             Current proposalId:{" "}
             <input
@@ -373,7 +323,8 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              Amount: <span className="font-mono">{proposalInfo.amount}</span>
+              Amount:{" "}
+              <span className="font-mono">{proposalInfo.amount}</span>
             </div>
             <div className="flex items-center gap-3">
               <span>
