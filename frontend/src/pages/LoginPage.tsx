@@ -76,10 +76,7 @@ export default function LoginPage() {
               {googleWallet ? (
                 <button
                   onClick={() =>
-                    connect(
-                      { wallet: googleWallet },
-                      { onSuccess: () => console.log("Enoki Google connected") },
-                    )
+                    connect({ wallet: googleWallet })
                   }
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors"
                 >
@@ -121,6 +118,7 @@ export default function LoginPage() {
               <div className="flex flex-col items-center gap-2">
                 <ConnectButton
                   connectText="💳 Wallet ile Bağlan"
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-slate-100 font-semibold hover:bg-slate-600 transition-colors border border-slate-600"
                 />
                 <p className="text-center text-xs text-slate-500">
                   (Sui Wallet, Flush, Ethos...)
