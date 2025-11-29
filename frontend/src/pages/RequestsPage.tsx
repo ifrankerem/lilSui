@@ -55,9 +55,9 @@ export default function RequestsPage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">İstekleri Gör</h1>
+          <h1 className="text-2xl font-bold text-slate-100">View Requests</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Tüm bütçe isteklerini ve onay durumlarını görüntüleyin.
+            View all budget requests and their approval status.
           </p>
         </div>
 
@@ -71,24 +71,23 @@ export default function RequestsPage() {
         {/* Proposal IDs Input */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-slate-100 mb-4">
-            Proposal ID'leri
+            Proposal IDs
           </h2>
           <p className="text-sm text-slate-400 mb-4">
-            Görüntülemek istediğiniz Proposal ID'lerini her satıra bir tane
-            olacak şekilde girin.
+            Enter the Proposal IDs you want to view, one per line.
           </p>
           <textarea
             className="w-full min-h-[100px] px-4 py-3 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
             value={proposalIds}
             onChange={(e) => setProposalIds(e.target.value)}
-            placeholder="Proposal ID'leri (her satıra bir tane)..."
+            placeholder="Proposal IDs (one per line)..."
           />
           <button
             onClick={loadProposals}
             disabled={loading}
             className="mt-4 px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
           >
-            {loading ? "Yükleniyor..." : "İstekleri Yükle"}
+            {loading ? "Loading..." : "Load Requests"}
           </button>
         </div>
 
@@ -101,15 +100,15 @@ export default function RequestsPage() {
         <div className="flex items-center gap-6 text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-emerald-500/40"></span>
-            <span>✓ Onaylandı (Executed)</span>
+            <span>✓ Approved (Executed)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-red-500/40"></span>
-            <span>✗ Reddedildi (Rejected)</span>
+            <span>✗ Rejected</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-amber-500/40"></span>
-            <span>? Beklemede (Voting)</span>
+            <span>? Pending (Voting)</span>
           </div>
         </div>
       </div>
