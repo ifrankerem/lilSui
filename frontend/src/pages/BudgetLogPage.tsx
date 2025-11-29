@@ -30,7 +30,7 @@ export default function BudgetLogPage() {
 
   const loadBudgetInfo = async () => {
     if (!budgetId) {
-      setError("Lütfen bir Budget ID girin.");
+      setError("Please enter a Budget ID.");
       return;
     }
     try {
@@ -53,9 +53,9 @@ export default function BudgetLogPage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Bütçe Geçmişi</h1>
+          <h1 className="text-2xl font-bold text-slate-100">Budget History</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Tüm harcama kayıtlarını görüntüleyin.
+            View all spending records.
           </p>
         </div>
 
@@ -69,21 +69,21 @@ export default function BudgetLogPage() {
         {/* Budget Info Section */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-slate-100 mb-4">
-            Bütçe Bilgisi
+            Budget Information
           </h2>
           <div className="flex gap-3 mb-4">
             <input
               className="flex-1 px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               value={budgetId}
               onChange={(e) => setBudgetId(e.target.value)}
-              placeholder="Budget ID girin..."
+              placeholder="Enter Budget ID..."
             />
             <button
               onClick={loadBudgetInfo}
               disabled={loading}
               className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
             >
-              Yükle
+              Load
             </button>
           </div>
 
@@ -91,7 +91,7 @@ export default function BudgetLogPage() {
             <div className="flex items-center gap-8 py-4 px-6 bg-slate-700/30 rounded-lg">
               <div>
                 <p className="text-xs uppercase text-slate-400 mb-1">
-                  Bütçe Adı
+                  Budget Name
                 </p>
                 <p className="text-lg font-semibold text-slate-100">
                   {budgetInfo.name}
@@ -99,14 +99,14 @@ export default function BudgetLogPage() {
               </div>
               <div>
                 <p className="text-xs uppercase text-slate-400 mb-1">
-                  Toplam Bütçe
+                  Total Budget
                 </p>
                 <p className="text-lg font-semibold text-emerald-400">
                   {budgetInfo.total} TL
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase text-slate-400 mb-1">Kalan</p>
+                <p className="text-xs uppercase text-slate-400 mb-1">Remaining</p>
                 <p className="text-lg font-semibold text-amber-400">
                   {budgetInfo.total - budgetInfo.spent} TL
                 </p>
@@ -117,7 +117,7 @@ export default function BudgetLogPage() {
           {!budgetInfo && (
             <div className="py-4 px-6 bg-slate-700/30 rounded-lg text-center">
               <p className="text-2xl font-bold text-slate-100">
-                Toplam Harcama: {totalSpent} TL
+                Total Spending: {totalSpent} TL
               </p>
             </div>
           )}
@@ -127,23 +127,23 @@ export default function BudgetLogPage() {
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
             <h2 className="text-lg font-semibold text-slate-100">
-              Harcama Geçmişi
+              Spending History
             </h2>
             <button
               onClick={loadLogs}
               className="text-sm text-emerald-400 hover:text-emerald-300"
             >
-              Yenile
+              Refresh
             </button>
           </div>
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="text-slate-400">Yükleniyor...</div>
+              <div className="text-slate-400">Loading...</div>
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
-              <p>Henüz harcama kaydı bulunmuyor.</p>
+              <p>No spending records yet.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -151,19 +151,19 @@ export default function BudgetLogPage() {
                 <thead>
                   <tr className="bg-slate-800/50">
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase text-slate-400">
-                      Harcanan Miktar
+                      Amount Spent
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase text-slate-400">
-                      Alıcı
+                      Receiver
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase text-slate-400">
                       Proposal
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase text-slate-400">
-                      Tarih
+                      Date
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase text-slate-400">
-                      İşlem
+                      Transaction
                     </th>
                   </tr>
                 </thead>
@@ -191,7 +191,7 @@ export default function BudgetLogPage() {
                       <td className="px-6 py-4">
                         <span className="text-sm text-slate-300">
                           {new Date(log.timestampMs).toLocaleDateString(
-                            "tr-TR",
+                            "en-US",
                             {
                               day: "2-digit",
                               month: "2-digit",
