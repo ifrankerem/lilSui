@@ -40,7 +40,12 @@ app.post("/budgets", async (req, res) => {
       return res.status(400).json({ error: "adminCapId, name, coinObjectId, and amount are required" });
     }
 
-    const result = await createBudgetOnChain(adminCapId, name, coinObjectId, Number(amount));
+    const amountNum = Number(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ error: "amount must be a positive number" });
+    }
+
+    const result = await createBudgetOnChain(adminCapId, name, coinObjectId, amountNum);
     res.json(result);
   } catch (e: any) {
     console.error(e);
