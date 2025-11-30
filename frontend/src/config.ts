@@ -1,6 +1,6 @@
 // src/config.ts
 export const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+  import.meta.env.VITE_BACKEND_URL || "https://lilsui-1.onrender.com";
 
 export const SUI_NETWORK = "testnet" as const;
 
