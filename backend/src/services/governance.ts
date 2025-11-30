@@ -25,15 +25,16 @@ export async function createBudgetOnChain(
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::create_budget`,
     arguments: [
-      tx.object(adminCapId),
-      tx.pure(stringToBytes(name)),           // vector<u8>
-      tx.object(coinObjectId),
-      tx.pure. u64(BigInt(amount)),            // u64
+      tx.object(adminCapId),                    // &AdminCap
+      tx.pure(stringToBytes(name)),             // vector<u8>
+      tx. object(coinObjectId),                  // &mut Coin<SUI> - otomatik mutable olur
+      tx.pure. u64(BigInt(amount)),              // u64
     ],
   });
 
   const res = await sponsorAndExecuteWithEnoki(tx, {
     allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_budget`],
+    allowedAddresses: [adminCapId, coinObjectId],  // 👈 Bu satırı ekle! 
   });
 
   const created = (res.objectChanges ??  []).find(
