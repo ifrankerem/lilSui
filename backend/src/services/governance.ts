@@ -58,6 +58,7 @@ export async function createBudgetOnChain(
 // 2) CREATE PROPOSAL (Enoki sponsored)
 // ----------------------------------------------------
 export async function createProposalOnChain(input: {
+  budgetId: string;  // 👈 Yeni parametre
   title: string;
   description: string;
   amount: number;
@@ -69,34 +70,34 @@ export async function createProposalOnChain(input: {
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::create_proposal`,
     arguments: [
-      tx.pure(stringToBytes(input.title)),        // vector<u8>
-      tx. pure(stringToBytes(input.description)),  // vector<u8>
-      tx. pure. u64(BigInt(input.amount)),          // u64
-      tx.pure. address(input.receiver),
-      tx.pure(input.participants),
+      tx.object(input. budgetId),                  // 👈 Budget referansı
+      tx. pure(stringToBytes(input. title)),
+      tx.pure(stringToBytes(input.description)),
+      tx. pure. u64(BigInt(input.amount)),
+      tx. pure. address(input.receiver),
+      tx. pure(input.participants),
     ],
   });
 
   const res = await sponsorAndExecuteWithEnoki(tx, {
     allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_proposal`],
-    allowedAddresses: [input. receiver],
   });
 
-  const created = (res.objectChanges ?? []).find(
+  const created = (res. objectChanges ??  []).find(
     (c: any) =>
       c.type === "created" &&
       typeof c.objectType === "string" &&
-      c. objectType.includes("governance::Proposal"),
+      c.objectType. includes("governance::Proposal"),
   ) as any | undefined;
 
-  if (!created) {
-    throw new Error("create_proposal: Proposal object not found in effects");
+  if (! created) {
+    throw new Error("create_proposal: Proposal object not found");
   }
 
   return {
     txDigest: res.digest,
-    proposalId: created.objectId,
-    effects: res.effects,
+    proposalId: created. objectId,
+    budgetId: input.budgetId,
   };
 }
 
@@ -158,19 +159,20 @@ export async function getProposal(proposalId: string) {
     options: { showContent: true },
   });
 
-  const data = (obj.data?.content as any)?.fields ?? {};
+  const data = (obj.data?. content as any)?.fields ??  {};
 
   return {
     id: proposalId,
+    budgetId: data. budget_id ??  "",  // 👈 Yeni
     title: data.title ?? "",
-    description: data.description ?? "",
-    amount: Number(data.amount ?? 0),
+    description: data.description ??  "",
+    amount: Number(data.amount ??  0),
     yesVotes: Number(data.yes_votes ?? data.yesVotes ?? 0),
     noVotes: Number(data.no_votes ?? data.noVotes ?? 0),
-    totalVoters: Number(data.total_voters ?? data.totalVoters ?? 0),
-    votesCast: Number(data.votes_cast ?? data.votesCast ?? 0),
-    statusRaw: data.status ?? data.status_raw ?? data.statusRaw,
-    receiver: data.receiver ?? "",
+    totalVoters: Number(data.total_voters ??  data.totalVoters ?? 0),
+    votesCast: Number(data.votes_cast ??  data.votesCast ?? 0),
+    statusRaw: data.status ??  data.status_raw ?? data.statusRaw,
+    receiver: data.receiver ??  "",
     participants: (data.participants as string[]) ?? [],
   };
 }
@@ -201,39 +203,56 @@ export async function getSpendingEvents() {
   });
 }
 
+// ...  mevcut kod ...
+
 // ----------------------------------------------------
-// 7) GET ALL PROPOSALS (using indexer/RPC)
-// Note: This is a limited implementation. In production, use an indexer like
-// SuiVision or custom indexer to track all shared proposal objects.
-// For now, this returns proposals from SpendingEvents (executed proposals only).
-// The frontend also supports searching by proposal ID for pending proposals.
+// 7) GET ALL PROPOSALS (using ProposalCreatedEvent)
 // ----------------------------------------------------
 export async function getAllProposals() {
   try {
-    // Query SpendingEvents to get proposal IDs of executed proposals
-    // Note: This only captures executed proposals. For a complete list,
-    // you would need an indexer that tracks all Proposal object creations.
-    const events = await suiClient.queryEvents({
+    // Query ProposalCreatedEvent to get all proposal IDs
+    const createdEvents = await suiClient.queryEvents({
       query: {
-        MoveEventType: `${PACKAGE_ID}::governance::SpendingEvent`,
+        MoveEventType: `${PACKAGE_ID}::governance::ProposalCreatedEvent`,
       },
       limit: 100,
     });
 
     const proposalIds = new Set<string>();
-    events.data.forEach((e: any) => {
-      const parsed = (e.parsedJson ?? {}) as any;
+    
+    // ProposalCreatedEvent'lerden proposal ID'leri al
+    createdEvents.data.forEach((e: any) => {
+      const parsed = (e. parsedJson ??  {}) as any;
       if (parsed.proposal_id) {
         proposalIds.add(parsed.proposal_id);
       }
     });
 
+    // Eğer ProposalCreatedEvent yoksa, SpendingEvent'lere de bak (eski proposal'lar için)
+    if (proposalIds.size === 0) {
+      const spendingEvents = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${PACKAGE_ID}::governance::SpendingEvent`,
+        },
+        limit: 100,
+      });
+
+      spendingEvents.data.forEach((e: any) => {
+        const parsed = (e.parsedJson ?? {}) as any;
+        if (parsed.proposal_id) {
+          proposalIds. add(parsed.proposal_id);
+        }
+      });
+    }
+
+    // Tüm proposal detaylarını getir
     const proposals = await Promise.all(
-      Array.from(proposalIds).map((id) => getProposal(id).catch(() => null))
+      Array.from(proposalIds).map((id) => getProposal(id). catch(() => null))
     );
 
     return proposals.filter((p): p is NonNullable<typeof p> => p !== null);
-  } catch {
+  } catch (error) {
+    console.error("getAllProposals error:", error);
     return [];
   }
 }
@@ -242,10 +261,39 @@ export async function getAllProposals() {
 // 8) GET PROPOSALS BY USER (participant)
 // ----------------------------------------------------
 export async function getProposalsByUser(userAddress: string) {
-  const allProposals = await getAllProposals();
-  return allProposals.filter((p) =>
-    p.participants.some(
-      (participant) => participant.toLowerCase() === userAddress.toLowerCase()
-    )
-  );
+  try {
+    // Önce ProposalCreatedEvent'lerden kullanıcının participant olduğu proposal'ları bul
+    const createdEvents = await suiClient. queryEvents({
+      query: {
+        MoveEventType: `${PACKAGE_ID}::governance::ProposalCreatedEvent`,
+      },
+      limit: 100,
+    });
+
+    const userProposalIds = new Set<string>();
+
+    createdEvents.data.forEach((e: any) => {
+      const parsed = (e.parsedJson ?? {}) as any;
+      const participants = parsed.participants || [];
+      
+      // Kullanıcı participant listesinde mi?
+      const isParticipant = participants.some(
+        (p: string) => p. toLowerCase() === userAddress.toLowerCase()
+      );
+      
+      if (isParticipant && parsed.proposal_id) {
+        userProposalIds.add(parsed.proposal_id);
+      }
+    });
+
+    // Proposal detaylarını getir
+    const proposals = await Promise.all(
+      Array.from(userProposalIds).map((id) => getProposal(id).catch(() => null))
+    );
+
+    return proposals.filter((p): p is NonNullable<typeof p> => p !== null);
+  } catch (error) {
+    console.error("getProposalsByUser error:", error);
+    return [];
+  }
 }

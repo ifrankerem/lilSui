@@ -17,6 +17,7 @@ export type BudgetDto = {
 
 export type ProposalDto = {
   id: string;
+  budgetId: string;  // 👈 Yeni
   title: string;
   description: string;
   amount: number;
@@ -59,7 +60,9 @@ export async function apiGetBudget(id: string): Promise<BudgetDto> {
   return res.data as BudgetDto;
 }
 
+// 👈 budgetId parametresi eklendi
 export async function apiCreateProposal(params: {
+  budgetId: string;
   title: string;
   description: string;
   amount: number;
@@ -70,16 +73,17 @@ export async function apiCreateProposal(params: {
   return res.data as {
     txDigest: string;
     proposalId: string;
+    budgetId: string;
   };
 }
 
 export async function apiGetProposal(id: string): Promise<ProposalDto> {
-  const res = await api.get(`/proposals/${id}`);
+  const res = await api. get(`/proposals/${id}`);
   return res.data as ProposalDto;
 }
 
 export async function apiGetAllProposals(): Promise<ProposalDto[]> {
-  const res = await api.get("/proposals");
+  const res = await api. get("/proposals");
   return res.data as ProposalDto[];
 }
 
