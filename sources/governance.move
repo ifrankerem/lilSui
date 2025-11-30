@@ -105,21 +105,25 @@ module community_budget::governance {
      **********************/
 
     /// Create a budget (only AdminCap holder can do this).
-    /// initial_funds: Real SUI coin to deposit into the budget
+    /// coin: Mutable reference to the coin to split from
+    /// amount: Amount to deposit into the budget (in MIST)
+    /// The remaining balance stays with the user
     public entry fun create_budget(
         _admin: &AdminCap,
         name_bytes: vector<u8>,
-        initial_funds: Coin<SUI>,
+        coin: &mut Coin<SUI>,
+        amount: u64,
         ctx: &mut tx_context::TxContext,
     ) {
-        let total = coin::value(&initial_funds);
+        // Split only the requested amount from the coin
+        let budget_coin = coin::split(coin, amount, ctx);
         
         let budget = CommunityBudget {
             id: object::new(ctx),
             name: string::utf8(name_bytes),
-            total,
+            total: amount,
             spent: 0,
-            funds: coin::into_balance(initial_funds),
+            funds: coin::into_balance(budget_coin),
         };
 
         // Make budget a shared object so everyone can read and update

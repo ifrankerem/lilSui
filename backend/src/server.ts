@@ -31,16 +31,16 @@ app.get("/", (_req, res) => {
 /**
  * Create new budget (requires AdminCap and SUI coin)
  * POST /budgets
- * body: { adminCapId: string, name: string, coinObjectId: string }
+ * body: { adminCapId: string, name: string, coinObjectId: string, amount: number }
  */
 app.post("/budgets", async (req, res) => {
   try {
-    const { adminCapId, name, coinObjectId } = req.body;
-    if (!adminCapId || !name || !coinObjectId) {
-      return res.status(400).json({ error: "adminCapId, name, and coinObjectId are required" });
+    const { adminCapId, name, coinObjectId, amount } = req.body;
+    if (!adminCapId || !name || !coinObjectId || amount == null) {
+      return res.status(400).json({ error: "adminCapId, name, coinObjectId, and amount are required" });
     }
 
-    const result = await createBudgetOnChain(adminCapId, name, coinObjectId);
+    const result = await createBudgetOnChain(adminCapId, name, coinObjectId, Number(amount));
     res.json(result);
   } catch (e: any) {
     console.error(e);
