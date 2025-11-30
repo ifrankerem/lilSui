@@ -71,6 +71,7 @@ app.get("/budgets/:id", async (req, res) => {
  * Create new proposal
  * POST /proposals
  * body: {
+ *   budgetId: string;    // 👈 Yeni
  *   title: string;
  *   description: string;
  *   amount: number;
@@ -80,12 +81,12 @@ app.get("/budgets/:id", async (req, res) => {
  */
 app.post("/proposals", async (req, res) => {
   try {
-    const { title, description, amount, receiver, participants } = req.body;
+    const { budgetId, title, description, amount, receiver, participants } = req.body;
 
-    if (!title || !description || amount == null || !receiver) {
+    if (!budgetId || !title || !description || amount == null || ! receiver) {
       return res
         .status(400)
-        .json({ error: "title, description, amount, receiver required" });
+        .json({ error: "budgetId, title, description, amount, receiver required" });
     }
 
     const participantsArr = Array.isArray(participants)
@@ -93,6 +94,7 @@ app.post("/proposals", async (req, res) => {
       : [];
 
     const result = await createProposalOnChain({
+      budgetId,  // 👈 Ekle
       title,
       description,
       amount: Number(amount),
@@ -103,7 +105,7 @@ app.post("/proposals", async (req, res) => {
     res.json(result);
   } catch (e: any) {
     console.error(e);
-    res.status(500).json({ error: e.message ?? "unknown error" });
+    res.status(500). json({ error: e.message ??  "unknown error" });
   }
 });
 

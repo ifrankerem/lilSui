@@ -1,23 +1,23 @@
 // src/pages/CreateRequestPage.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { MainLayout } from "../components/MainLayout";
-import { apiCreateProposal, apiCreateBudget } from "../api";
+import { apiCreateProposal, apiCreateBudget, apiGetBudget } from "../api";
 import { isAdmin } from "../lib/adminCheck";
 
 /**
- * Convert SUI amount string to MIST (integer) avoiding floating-point precision issues.
+ * Convert SUI amount string to MIST (integer) avoiding floating-point precision issues. 
  * Handles up to 9 decimal places (SUI's precision).
  * 1 SUI = 1,000,000,000 MIST
  */
 function suiToMist(suiAmount: string): bigint {
-  const parts = suiAmount.split(".");
+  const parts = suiAmount. split(".");
   const integerPart = parts[0] || "0";
   let decimalPart = parts[1] || "";
   
   // Pad or truncate decimal part to 9 digits (MIST precision)
-  decimalPart = decimalPart.padEnd(9, "0").slice(0, 9);
+  decimalPart = decimalPart.padEnd(9, "0"). slice(0, 9);
   
   // Combine integer and decimal parts as a single integer in MIST
   const combined = integerPart + decimalPart;
@@ -33,7 +33,7 @@ type SuccessInfo = {
 export default function CreateRequestPage() {
   const navigate = useNavigate();
   const account = useCurrentAccount();
-  const userIsAdmin = isAdmin(account?.address);
+  const userIsAdmin = isAdmin(account?. address);
 
   // Budget creation state
   const [showBudgetForm, setShowBudgetForm] = useState(false);
@@ -41,6 +41,11 @@ export default function CreateRequestPage() {
   const [adminCapId, setAdminCapId] = useState("");
   const [coinObjectId, setCoinObjectId] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
+
+  // 👈 Yeni: Budget selection for proposal
+  const [selectedBudgetId, setSelectedBudgetId] = useState("");
+  const [budgetInfo, setBudgetInfo] = useState<{ name: string; total: number; spent: number } | null>(null);
+  const [budgetLoading, setBudgetLoading] = useState(false);
 
   // Proposal form state
   const [title, setTitle] = useState("");
@@ -54,9 +59,47 @@ export default function CreateRequestPage() {
   const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // 👈 Yeni: Load saved budget ID from localStorage
+  useEffect(() => {
+    const savedBudgetId = localStorage. getItem("currentBudgetId");
+    if (savedBudgetId) {
+      setSelectedBudgetId(savedBudgetId);
+      loadBudgetInfo(savedBudgetId);
+    }
+  }, []);
+
+  // 👈 Yeni: Load budget info when ID changes
+  const loadBudgetInfo = async (budgetId: string) => {
+    if (!budgetId) {
+      setBudgetInfo(null);
+      return;
+    }
+    try {
+      setBudgetLoading(true);
+      const info = await apiGetBudget(budgetId);
+      setBudgetInfo(info);
+      // Save to localStorage
+      localStorage.setItem("currentBudgetId", budgetId);
+    } catch {
+      setBudgetInfo(null);
+    } finally {
+      setBudgetLoading(false);
+    }
+  };
+
+  const handleBudgetIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newId = e.target.value;
+    setSelectedBudgetId(newId);
+    if (newId. length > 60) {
+      loadBudgetInfo(newId);
+    } else {
+      setBudgetInfo(null);
+    }
+  };
+
   const handleCopyId = async () => {
     if (successInfo) {
-      await navigator.clipboard.writeText(successInfo.id);
+      await navigator.clipboard.writeText(successInfo. id);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -81,7 +124,6 @@ export default function CreateRequestPage() {
       return;
     }
 
-    // Convert SUI to MIST using string-based conversion to avoid floating-point precision issues
     const amountInMist = Number(suiToMist(budgetAmount));
 
     try {
@@ -90,6 +132,12 @@ export default function CreateRequestPage() {
       setLoading(true);
 
       const res = await apiCreateBudget(adminCapId, budgetName, coinObjectId, amountInMist);
+      
+      // 👈 Yeni: Auto-select the created budget
+      setSelectedBudgetId(res.budgetId);
+      localStorage.setItem("currentBudgetId", res.budgetId);
+      loadBudgetInfo(res.budgetId);
+      
       setSuccessInfo({
         type: "budget",
         id: res.budgetId,
@@ -101,14 +149,18 @@ export default function CreateRequestPage() {
       setBudgetAmount("");
     } catch (e: unknown) {
       const err = e as Error;
-      setError(err.message ?? String(e));
+      setError(err.message ??  String(e));
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateProposal = async () => {
-    // Validation
+    // 👈 Yeni: Budget ID validation
+    if (!selectedBudgetId) {
+      setError("Please select a budget first.");
+      return;
+    }
     if (!title) {
       setError("Title is required.");
       return;
@@ -122,14 +174,14 @@ export default function CreateRequestPage() {
       setError("Amount must be greater than 0.");
       return;
     }
-    if (!receiver) {
+    if (! receiver) {
       setError("Receiver address is required.");
       return;
     }
 
     const participants = participantsText
       .split("\n")
-      .map((s) => s.trim())
+      . map((s) => s.trim())
       .filter(Boolean);
 
     if (participants.length === 0) {
@@ -137,7 +189,6 @@ export default function CreateRequestPage() {
       return;
     }
 
-    // Convert SUI to MIST using string-based conversion to avoid floating-point precision issues
     const amountInMist = Number(suiToMist(amount));
 
     try {
@@ -146,6 +197,7 @@ export default function CreateRequestPage() {
       setLoading(true);
 
       const res = await apiCreateProposal({
+        budgetId: selectedBudgetId,  // 👈 Yeni
         title,
         description,
         amount: amountInMist,
@@ -165,8 +217,6 @@ export default function CreateRequestPage() {
       setAmount("");
       setReceiver("");
       setParticipantsText("");
-
-      // NO auto-redirect - user stays on the page to see the ID
     } catch (e: unknown) {
       const err = e as Error;
       setError(err.message ?? String(e));
@@ -215,13 +265,13 @@ export default function CreateRequestPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-3 py-2 rounded bg-slate-800 text-emerald-300 font-mono text-sm break-all">
-                    {successInfo.id}
+                    {successInfo. id}
                   </code>
                   <button
                     onClick={handleCopyId}
                     className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors text-sm whitespace-nowrap"
                   >
-                    {copied ? "Copied!" : "Copy ID"}
+                    {copied ?  "Copied!" : "Copy ID"}
                   </button>
                 </div>
               </div>
@@ -258,10 +308,10 @@ export default function CreateRequestPage() {
         )}
 
         {/* Budget Creation Toggle - Only visible to admin */}
-        {userIsAdmin && !successInfo && (
+        {userIsAdmin && ! successInfo && (
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setShowBudgetForm(!showBudgetForm)}
+              onClick={() => setShowBudgetForm(! showBudgetForm)}
               className="text-sm text-emerald-400 hover:text-emerald-300"
             >
               {showBudgetForm ? "← Back to Proposal Form" : "Create New Budget"}
@@ -270,7 +320,7 @@ export default function CreateRequestPage() {
         )}
 
         {/* Budget Creation Form - Only visible to admin */}
-        {userIsAdmin && showBudgetForm && !successInfo && (
+        {userIsAdmin && showBudgetForm && ! successInfo && (
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-100">
               Create New Budget
@@ -317,7 +367,7 @@ export default function CreateRequestPage() {
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
               />
               <p className="text-xs text-slate-400 mt-1">
-                Only the specified amount will be taken. Remaining SUI stays in your wallet.
+                Only the specified amount will be taken.  Remaining SUI stays in your wallet.
               </p>
             </div>
 
@@ -331,7 +381,7 @@ export default function CreateRequestPage() {
                 onChange={(e) => setBudgetAmount(e.target.value)}
                 min="0"
                 step="0.000000001"
-                placeholder="e.g., 10.5"
+                placeholder="e.g., 10. 5"
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
               <p className="text-xs text-slate-400 mt-1">
@@ -350,11 +400,43 @@ export default function CreateRequestPage() {
         )}
 
         {/* Proposal Form */}
-        {(!userIsAdmin || !showBudgetForm) && !successInfo && (
+        {(! userIsAdmin || ! showBudgetForm) && ! successInfo && (
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-100">
               New Request
             </h2>
+
+            {/* 👈 Yeni: Budget Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Budget ID *
+              </label>
+              <input
+                type="text"
+                value={selectedBudgetId}
+                onChange={handleBudgetIdChange}
+                placeholder="0x...  (Enter or paste Budget ID)"
+                className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
+              />
+              {budgetLoading && (
+                <p className="text-xs text-slate-400 mt-1">Loading budget info...</p>
+              )}
+              {budgetInfo && (
+                <div className="mt-2 p-3 rounded-lg bg-emerald-900/30 border border-emerald-700">
+                  <p className="text-sm text-emerald-300">
+                    ✓ Budget: <span className="font-semibold">{budgetInfo.name}</span>
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Available: {(budgetInfo.total - budgetInfo. spent).toLocaleString()} MIST
+                  </p>
+                </div>
+              )}
+              {selectedBudgetId && ! budgetInfo && ! budgetLoading && (
+                <p className="text-xs text-red-400 mt-1">
+                  Budget not found. Please check the ID.
+                </p>
+              )}
+            </div>
 
             {/* Title */}
             <div>
@@ -364,7 +446,7 @@ export default function CreateRequestPage() {
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => setTitle(e.target. value)}
                 placeholder="e.g., New Chairs"
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
@@ -423,11 +505,11 @@ export default function CreateRequestPage() {
                 Participants (Voters) *
               </label>
               <p className="text-xs text-slate-400 mb-2">
-                Enter one address per line. These addresses can approve or reject the request.
+                Enter one address per line. These addresses can approve or reject the request. 
               </p>
               <textarea
                 value={participantsText}
-                onChange={(e) => setParticipantsText(e.target.value)}
+                onChange={(e) => setParticipantsText(e. target.value)}
                 placeholder="0x...\n0x...\n0x..."
                 rows={4}
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
@@ -437,7 +519,7 @@ export default function CreateRequestPage() {
             {/* Submit Button */}
             <button
               onClick={handleCreateProposal}
-              disabled={loading}
+              disabled={loading || !selectedBudgetId || !budgetInfo}
               className="w-full px-4 py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
             >
               {loading ? "Creating..." : "Create Request"}
