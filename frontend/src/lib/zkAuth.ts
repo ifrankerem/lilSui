@@ -16,10 +16,12 @@ const STORAGE_KEY = "zklogin-user";
 
 export function setZkUser(user: ZkLoginUser | null) {
   if (!user) {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage. removeItem(STORAGE_KEY);
+    localStorage.removeItem("userAddress");  // 👈 Bunu ekle
     return;
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  localStorage.setItem("userAddress", user.suiAddress);  // 👈 Bunu ekle
 }
 
 export function getZkUser(): ZkLoginUser | null {
@@ -37,20 +39,20 @@ export function getZkUser(): ZkLoginUser | null {
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 
 export function beginGoogleZkLogin() {
-  console.log("✅ beginGoogleZkLogin tıklandı");
+  console. log("✅ beginGoogleZkLogin tıklandı");
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  if (!clientId) {
-    console.error("❌ VITE_GOOGLE_CLIENT_ID yok");
+  if (! clientId) {
+    console. error("❌ VITE_GOOGLE_CLIENT_ID yok");
     alert("VITE_GOOGLE_CLIENT_ID env tanımlı değil!");
     return;
   }
 
   const redirectUri = `${window.location.origin}/zklogin-google-callback`;
-	console.log("REDIRECT URI ->", redirectUri);
+  console.log("REDIRECT URI ->", redirectUri);
   const nonce =
     crypto.randomUUID?.() ??
-    Math.random().toString(36).slice(2);
+    Math. random().toString(36).slice(2);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -89,7 +91,7 @@ export function completeGoogleZkLogin(): ZkLoginUser {
 
   // deterministic salt, kullanıcıya göre:
   const saltKey = `zklogin-salt-${decoded.sub}`;
-  let saltStr = window.localStorage.getItem(saltKey);
+  let saltStr = window. localStorage.getItem(saltKey);
 
   if (!saltStr) {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -106,12 +108,13 @@ export function completeGoogleZkLogin(): ZkLoginUser {
 
   const user: ZkLoginUser = {
     provider: "google",
-    email: decoded.email,
+    email: decoded. email,
     displayName: decoded.name ?? decoded.given_name ?? "User",
     avatarUrl: decoded.picture,
     suiAddress,
   };
 
-  setZkUser(user);
+  setZkUser(user);  // Bu artık userAddress'i de kaydedecek
+  
   return user;
 }

@@ -15,31 +15,41 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // In a real implementation, this would be fetched from the API
-  // For now, we don't show pending count if no data is available
   const pendingCount = 0;
 
   useEffect(() => {
-    // Load logs on mount
+    // Sayfa yüklendiğinde kaydedilmiş budget ID'yi yükle
+    const savedBudgetId = localStorage.getItem("currentBudgetId");
+    if (savedBudgetId) {
+      setBudgetId(savedBudgetId);
+      // Otomatik olarak budget bilgisini yükle
+      loadBudgetInfo(savedBudgetId);
+    }
     handleLoadLogs();
   }, []);
+
+  const loadBudgetInfo = async (id: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+      const info = await apiGetBudget(id);
+      setBudgetInfo(info);
+      // ✅ Budget ID'yi localStorage'a kaydet
+      localStorage.setItem("currentBudgetId", id);
+    } catch (e: unknown) {
+      const err = e as Error;
+      setError(err.message ??  String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLoadBudgetInfo = async () => {
     if (!budgetId) {
       setError("Please enter a Budget ID.");
       return;
     }
-    try {
-      setError(null);
-      setLoading(true);
-      const info = await apiGetBudget(budgetId);
-      setBudgetInfo(info);
-    } catch (e: unknown) {
-      const err = e as Error;
-      setError(err.message ?? String(e));
-    } finally {
-      setLoading(false);
-    }
+    await loadBudgetInfo(budgetId);
   };
 
   const handleLoadLogs = async () => {
@@ -56,9 +66,19 @@ export default function DashboardPage() {
     }
   };
 
+  // ✅ Budget ID'yi temizle
+  const handleClearBudget = () => {
+    localStorage.removeItem("currentBudgetId");
+    setBudgetId("");
+    setBudgetInfo(null);
+  };
+
   const remaining = budgetInfo
     ? budgetInfo.total - budgetInfo.spent
     : undefined;
+
+  // ✅ Aktif budget göstergesi
+  const activeBudgetId = localStorage.getItem("currentBudgetId");
 
   return (
     <MainLayout>
@@ -67,7 +87,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
           {pendingCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-1. 5 bg-amber-500/20 rounded-lg">
               <span className="text-amber-400 text-lg">⚠</span>
               <span className="text-sm text-amber-400">
                 {pendingCount} pending requests
@@ -75,6 +95,24 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* ✅ Active Budget Indicator */}
+        {activeBudgetId && (
+          <div className="bg-emerald-900/30 border border-emerald-600 px-4 py-3 rounded-lg flex items-center justify-between">
+            <div>
+              <span className="text-emerald-400 text-sm font-semibold">Active Budget: </span>
+              <span className="text-emerald-300 text-sm font-mono">
+                {activeBudgetId. slice(0, 10)}...{activeBudgetId.slice(-6)}
+              </span>
+            </div>
+            <button
+              onClick={handleClearBudget}
+              className="text-xs text-red-400 hover:text-red-300"
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (
@@ -102,12 +140,12 @@ export default function DashboardPage() {
               disabled={loading}
               className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors disabled:opacity-50"
             >
-              {loading ? "Loading..." : "Load"}
+              {loading ? "Loading..." : "Load & Set Active"}
             </button>
           </div>
 
           {/* Budget Info Display */}
-          {budgetInfo ? (
+          {budgetInfo ?  (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-slate-700/30 rounded-lg p-4">
                 <p className="text-xs uppercase text-slate-400 mb-1">
@@ -134,7 +172,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="text-center py-8 text-slate-400">
-              <p>Enter a Budget ID to view budget information.</p>
+              <p>Enter a Budget ID to view budget information and enable voting.</p>
             </div>
           )}
         </div>
@@ -170,7 +208,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm text-slate-100 font-mono">
-                        {log.receiver.slice(0, 8)}…{log.receiver.slice(-4)}
+                        {log.receiver. slice(0, 8)}…{log.receiver. slice(-4)}
                       </p>
                       <p className="text-xs text-slate-400">
                         {new Date(log.timestampMs).toLocaleDateString("en-US")}

@@ -4,4 +4,4 @@ export const BACKEND_URL =
 
 export const SUI_NETWORK = "testnet" as const;
 
-export const ADMIN_ADDRESS = "0x6b34f727c0faba6ab8e45fe344432fd14f3a31c4ee968a354c1940233d02daf6";
+export const ADMIN_ADDRESS = "0xea8ae94f8ff05578afe1ec7d5b55f30d864bf1f8411a39fe597fd755dbbfc41d";
