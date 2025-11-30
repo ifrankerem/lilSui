@@ -75,21 +75,15 @@ jobs:
           exchange_objects: []
           rpc_url: https://fullnode.testnet.sui.io:443
           EOF
-          
           cat > ~/.config/walrus/sites-config.yaml << 'EOF'
-          contexts:
-            testnet:
-              portal: "trwal.app"
-              package: "0xf99aee9f21493e1590e7e5a9aea6f343a1f381031a04a732724871fc294be799"
-              general:
-                wallet_env: "testnet"
-                walrus_context: "testnet"
-                walrus_binary: "walrus"
-                gas_budget: 500000000
-              staking_object: "0xbe46180321c30aab2f8b3501e24048377287fa708018a5b7c2792b35fe339ee3"
-          default_context: testnet
+          portal: "trwal.app"
+          package: "0xf99aee9f21493e1590e7e5a9aea6f343a1f381031a04a732724871fc294be799"
+          general:
+            wallet_env: "testnet"
+            walrus_binary: "walrus"
+            gas_budget: 500000000
+          staking_object: "0xbe46180321c30aab2f8b3501e24048377287fa708018a5b7c2792b35fe339ee3"
           EOF
-          echo "Walrus configured"
       
       - name: Deploy to Walrus
         working-directory: ./frontend
