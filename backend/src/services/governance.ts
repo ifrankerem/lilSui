@@ -3,6 +3,8 @@ import { TransactionBlock } from "@mysten/sui.js/transactions";
 import { PACKAGE_ID } from "../config/sui";
 import { sponsorAndExecuteWithEnoki } from "../lib/enokiSponsor";
 import { suiClient } from "../lib/suiClient";
+import { executeWithAdminKey } from "../lib/directExecute";
+
 
 // Helper: String'i vector<u8>'e çevir
 function stringToBytes(str: string): number[] {
@@ -25,19 +27,17 @@ export async function createBudgetOnChain(
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::create_budget`,
     arguments: [
-      tx.object(adminCapId),                    // &AdminCap
-      tx.pure(stringToBytes(name)),             // vector<u8>
-      tx. object(coinObjectId),                  // &mut Coin<SUI> - otomatik mutable olur
-      tx.pure. u64(BigInt(amount)),              // u64
+      tx.object(adminCapId),
+      tx.pure(stringToBytes(name)),
+      tx.object(coinObjectId),
+      tx.pure. u64(BigInt(amount)),
     ],
   });
 
-  const res = await sponsorAndExecuteWithEnoki(tx, {
-    allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_budget`],
-    allowedAddresses: [adminCapId, coinObjectId],  // 👈 Bu satırı ekle! 
-  });
+  // Enoki yerine direkt execute:
+  const res = await executeWithAdminKey(tx);
 
-  const created = (res.objectChanges ??  []).find(
+  const created = (res. objectChanges ??  []).find(
     (c: any) =>
       c.type === "created" &&
       typeof c.objectType === "string" &&
@@ -50,7 +50,7 @@ export async function createBudgetOnChain(
 
   return {
     txDigest: res.digest,
-    budgetId: created. objectId,
+    budgetId: created.objectId,
     effects: res.effects,
   };
 }
