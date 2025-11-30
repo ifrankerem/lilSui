@@ -24,6 +24,8 @@ jobs:
       
       - name: Build frontend
         working-directory: ./frontend
+        env:
+          VITE_API_URL: https://agora-backend.onrender.com
         run: npm run build
       
       - name: Fix asset paths for Walrus
