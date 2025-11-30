@@ -12,6 +12,8 @@ import {
   type AuthProvider,
 } from "@mysten/enoki";
 import { useNavigate } from "react-router-dom";
+import { NeonOrbs } from "../components/ui/neon-orbs";
+import { LiquidButton } from "../components/ui/liquid-glass-button";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -38,8 +40,11 @@ export default function LoginPage() {
   }, [account, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
-      <div className="w-full max-w-md px-6 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100 relative overflow-hidden">
+      {/* Neon Orbs Background */}
+      <NeonOrbs />
+
+      <div className="w-full max-w-md px-6 py-12 relative z-10">
         {/* Logo / Club Name */}
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-emerald-400 mb-2">
@@ -49,7 +54,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 space-y-6">
+        <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 space-y-6 shadow-2xl">
           <p className="text-center text-sm text-slate-400">
             Choose a method to log in to the budget management system.
           </p>
@@ -57,28 +62,31 @@ export default function LoginPage() {
           {/* Connected State */}
           {account ? (
             <div className="space-y-4">
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center backdrop-blur-sm">
                 <p className="text-emerald-400 font-medium">Login Successful!</p>
                 <p className="text-xs text-slate-400 mt-1 font-mono">
                   {account.address.slice(0, 12)}…{account.address.slice(-8)}
                 </p>
               </div>
-              <button
+              <LiquidButton
                 onClick={() => navigate("/dashboard")}
-                className="w-full px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors"
+                className="w-full"
+                size="lg"
               >
                 Go to Dashboard →
-              </button>
+              </LiquidButton>
             </div>
           ) : (
             <>
               {/* Google Login Button (zkLogin) */}
               {googleWallet ? (
-                <button
+                <LiquidButton
                   onClick={() =>
                     connect({ wallet: googleWallet })
                   }
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors"
+                  variant="secondary"
+                  className="w-full bg-white/90 text-slate-900 hover:bg-white border-white/50"
+                  size="lg"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
@@ -99,7 +107,7 @@ export default function LoginPage() {
                     />
                   </svg>
                   Login with Google
-                </button>
+                </LiquidButton>
               ) : (
                 <p className="text-center text-sm text-red-400">
                   Google Enoki wallet not found. Please check configuration.
@@ -108,16 +116,16 @@ export default function LoginPage() {
 
               {/* Divider */}
               <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-slate-600"></div>
+                <div className="flex-1 h-px bg-slate-600/50"></div>
                 <span className="text-slate-500 text-sm">or</span>
-                <div className="flex-1 h-px bg-slate-600"></div>
+                <div className="flex-1 h-px bg-slate-600/50"></div>
               </div>
 
               {/* Wallet Connect Button (dApp Kit) */}
               <div className="flex flex-col items-center gap-2">
                 <ConnectButton
                   connectText="💳 Connect Wallet"
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-slate-100 font-semibold hover:bg-slate-600 transition-colors border border-slate-600"
+                  className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-slate-700/50 backdrop-blur-md text-slate-100 font-semibold hover:bg-slate-600/60 transition-all duration-300 border border-slate-600/50 hover:border-slate-500/50 shadow-lg"
                 />
                 <p className="text-center text-xs text-slate-500">
                   (Sui Wallet, Flush, Ethos...)
