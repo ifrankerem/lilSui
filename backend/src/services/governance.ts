@@ -4,6 +4,11 @@ import { PACKAGE_ID } from "../config/sui";
 import { sponsorAndExecuteWithEnoki } from "../lib/enokiSponsor";
 import { suiClient } from "../lib/suiClient";
 
+// Helper: String'i vector<u8>'e çevir
+function stringToBytes(str: string): number[] {
+  return Array.from(new TextEncoder().encode(str));
+}
+
 // ----------------------------------------------------
 // 1) CREATE BUDGET (Enoki sponsored)
 // Requires AdminCap and real SUI coin
@@ -21,9 +26,9 @@ export async function createBudgetOnChain(
     target: `${PACKAGE_ID}::governance::create_budget`,
     arguments: [
       tx.object(adminCapId),
-      tx.pure.string(name),
+      tx.pure(stringToBytes(name)),           // vector<u8>
       tx.object(coinObjectId),
-      tx.pure.u64(String(amount)),
+      tx.pure. u64(BigInt(amount)),            // u64
     ],
   });
 
@@ -31,20 +36,20 @@ export async function createBudgetOnChain(
     allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_budget`],
   });
 
-  const created = (res.objectChanges ?? []).find(
+  const created = (res.objectChanges ??  []).find(
     (c: any) =>
       c.type === "created" &&
       typeof c.objectType === "string" &&
-      c.objectType.includes("governance::CommunityBudget"),
+      c.objectType. includes("governance::CommunityBudget"),
   ) as any | undefined;
 
-  if (!created) {
+  if (! created) {
     throw new Error("create_budget: CommunityBudget object not found in effects");
   }
 
   return {
     txDigest: res.digest,
-    budgetId: created.objectId,
+    budgetId: created. objectId,
     effects: res.effects,
   };
 }
@@ -64,24 +69,24 @@ export async function createProposalOnChain(input: {
   tx.moveCall({
     target: `${PACKAGE_ID}::governance::create_proposal`,
     arguments: [
-      tx.pure.string(input.title),
-      tx.pure.string(input.description),
-      tx.pure.u64(String(input.amount)),
-      tx.pure.address(input.receiver),
+      tx.pure(stringToBytes(input.title)),        // vector<u8>
+      tx. pure(stringToBytes(input.description)),  // vector<u8>
+      tx. pure. u64(BigInt(input.amount)),          // u64
+      tx.pure. address(input.receiver),
       tx.pure(input.participants),
     ],
   });
 
   const res = await sponsorAndExecuteWithEnoki(tx, {
     allowedMoveCallTargets: [`${PACKAGE_ID}::governance::create_proposal`],
-    allowedAddresses: [input.receiver],
+    allowedAddresses: [input. receiver],
   });
 
   const created = (res.objectChanges ?? []).find(
     (c: any) =>
       c.type === "created" &&
       typeof c.objectType === "string" &&
-      c.objectType.includes("governance::Proposal"),
+      c. objectType.includes("governance::Proposal"),
   ) as any | undefined;
 
   if (!created) {

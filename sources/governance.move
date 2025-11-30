@@ -94,7 +94,7 @@ module community_budget::governance {
 
     /// When contract is deployed, send AdminCap to the designated admin address
     fun init(ctx: &mut tx_context::TxContext) {
-        let admin_address = @0x6b34f727c0faba6ab8e45fe344432fd14f3a31c4ee968a354c1940233d02daf6;
+        let admin_address = @0xea8ae94f8ff05578afe1ec7d5b55f30d864bf1f8411a39fe597fd755dbbfc41d;
         transfer::transfer(AdminCap {
             id: object::new(ctx),
         }, admin_address);
