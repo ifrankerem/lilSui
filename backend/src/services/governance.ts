@@ -7,11 +7,13 @@ import { suiClient } from "../lib/suiClient";
 // ----------------------------------------------------
 // 1) CREATE BUDGET (Enoki sponsored)
 // Requires AdminCap and real SUI coin
+// amount: Amount to deposit in MIST (1 SUI = 1_000_000_000 MIST)
 // ----------------------------------------------------
 export async function createBudgetOnChain(
   adminCapId: string,
   name: string,
-  coinObjectId: string
+  coinObjectId: string,
+  amount: number
 ) {
   const tx = new TransactionBlock();
 
@@ -21,6 +23,7 @@ export async function createBudgetOnChain(
       tx.object(adminCapId),
       tx.pure.string(name),
       tx.object(coinObjectId),
+      tx.pure.u64(String(amount)),
     ],
   });
 

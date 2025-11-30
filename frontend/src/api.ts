@@ -45,8 +45,8 @@ export async function apiHealth() {
   return res.data;
 }
 
-export async function apiCreateBudget(adminCapId: string, name: string, coinObjectId: string) {
-  const res = await api.post("/budgets", { adminCapId, name, coinObjectId });
+export async function apiCreateBudget(adminCapId: string, name: string, coinObjectId: string, amount: number) {
+  const res = await api.post("/budgets", { adminCapId, name, coinObjectId, amount });
   return res.data as {
     txDigest: string;
     budgetId: string;

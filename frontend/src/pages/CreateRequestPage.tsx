@@ -6,6 +6,15 @@ import { MainLayout } from "../components/MainLayout";
 import { apiCreateProposal, apiCreateBudget } from "../api";
 import { isAdmin } from "../lib/adminCheck";
 
+// 1 SUI = 1,000,000,000 MIST
+const SUI_TO_MIST = 1_000_000_000;
+
+type SuccessInfo = {
+  type: "budget" | "proposal";
+  id: string;
+  txDigest: string;
+};
+
 export default function CreateRequestPage() {
   const navigate = useNavigate();
   const account = useCurrentAccount();
@@ -16,17 +25,27 @@ export default function CreateRequestPage() {
   const [budgetName, setBudgetName] = useState("");
   const [adminCapId, setAdminCapId] = useState("");
   const [coinObjectId, setCoinObjectId] = useState("");
+  const [budgetAmount, setBudgetAmount] = useState("");
 
   // Proposal form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState("");
   const [receiver, setReceiver] = useState("");
   const [participantsText, setParticipantsText] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = async () => {
+    if (successInfo) {
+      await navigator.clipboard.writeText(successInfo.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleCreateBudget = async () => {
     if (!budgetName) {
@@ -41,18 +60,30 @@ export default function CreateRequestPage() {
       setError("SUI Coin Object ID is required.");
       return;
     }
+    const amountNum = parseFloat(budgetAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError("Amount must be greater than 0.");
+      return;
+    }
+
+    // Convert SUI to MIST
+    const amountInMist = Math.floor(amountNum * SUI_TO_MIST);
 
     try {
       setError(null);
-      setSuccess(null);
+      setSuccessInfo(null);
       setLoading(true);
 
-      const res = await apiCreateBudget(adminCapId, budgetName, coinObjectId);
-      setSuccess(`Budget created! ID: ${res.budgetId}`);
+      const res = await apiCreateBudget(adminCapId, budgetName, coinObjectId, amountInMist);
+      setSuccessInfo({
+        type: "budget",
+        id: res.budgetId,
+        txDigest: res.txDigest,
+      });
       setBudgetName("");
       setAdminCapId("");
       setCoinObjectId("");
-      setShowBudgetForm(false);
+      setBudgetAmount("");
     } catch (e: unknown) {
       const err = e as Error;
       setError(err.message ?? String(e));
@@ -71,7 +102,8 @@ export default function CreateRequestPage() {
       setError("Description is required.");
       return;
     }
-    if (amount <= 0) {
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
       setError("Amount must be greater than 0.");
       return;
     }
@@ -90,38 +122,47 @@ export default function CreateRequestPage() {
       return;
     }
 
+    // Convert SUI to MIST for the proposal amount
+    const amountInMist = Math.floor(amountNum * SUI_TO_MIST);
+
     try {
       setError(null);
-      setSuccess(null);
+      setSuccessInfo(null);
       setLoading(true);
 
       const res = await apiCreateProposal({
         title,
         description,
-        amount,
+        amount: amountInMist,
         receiver,
         participants,
       });
 
-      setSuccess(`Request created! Proposal ID: ${res.proposalId}`);
+      setSuccessInfo({
+        type: "proposal",
+        id: res.proposalId,
+        txDigest: res.txDigest,
+      });
 
       // Clear form
       setTitle("");
       setDescription("");
-      setAmount(0);
+      setAmount("");
       setReceiver("");
       setParticipantsText("");
 
-      // Optionally navigate to requests page after success
-      setTimeout(() => {
-        navigate("/requests");
-      }, 2000);
+      // NO auto-redirect - user stays on the page to see the ID
     } catch (e: unknown) {
       const err = e as Error;
       setError(err.message ?? String(e));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResetSuccess = () => {
+    setSuccessInfo(null);
+    setShowBudgetForm(false);
   };
 
   return (
@@ -142,15 +183,67 @@ export default function CreateRequestPage() {
           </div>
         )}
 
-        {/* Success Display */}
-        {success && (
-          <div className="bg-emerald-900/40 border border-emerald-500 px-4 py-3 rounded-lg text-sm text-emerald-300">
-            {success}
+        {/* Success Display with ID and Copy Button */}
+        {successInfo && (
+          <div className="bg-emerald-900/40 border border-emerald-500 rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">✅</span>
+              <h2 className="text-lg font-semibold text-emerald-300">
+                {successInfo.type === "budget" ? "Budget Created!" : "Proposal Created!"}
+              </h2>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs uppercase text-slate-400 mb-1">
+                  {successInfo.type === "budget" ? "Budget ID" : "Proposal ID"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded bg-slate-800 text-emerald-300 font-mono text-sm break-all">
+                    {successInfo.id}
+                  </code>
+                  <button
+                    onClick={handleCopyId}
+                    className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors text-sm whitespace-nowrap"
+                  >
+                    {copied ? "Copied!" : "Copy ID"}
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-xs uppercase text-slate-400 mb-1">Transaction Digest</p>
+                <code className="block px-3 py-2 rounded bg-slate-800 text-slate-300 font-mono text-xs break-all">
+                  {successInfo.txDigest}
+                </code>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => navigate("/")}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold transition-colors"
+              >
+                Go to Home
+              </button>
+              <button
+                onClick={() => navigate("/requests")}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold transition-colors"
+              >
+                View Requests
+              </button>
+              <button
+                onClick={handleResetSuccess}
+                className="flex-1 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors"
+              >
+                Create Another
+              </button>
+            </div>
           </div>
         )}
 
         {/* Budget Creation Toggle - Only visible to admin */}
-        {userIsAdmin && (
+        {userIsAdmin && !successInfo && (
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowBudgetForm(!showBudgetForm)}
@@ -162,7 +255,7 @@ export default function CreateRequestPage() {
         )}
 
         {/* Budget Creation Form - Only visible to admin */}
-        {userIsAdmin && showBudgetForm && (
+        {userIsAdmin && showBudgetForm && !successInfo && (
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-100">
               Create New Budget
@@ -199,7 +292,7 @@ export default function CreateRequestPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                SUI Coin Object ID (to deposit)
+                SUI Coin Object ID (to split from)
               </label>
               <input
                 type="text"
@@ -208,6 +301,27 @@ export default function CreateRequestPage() {
                 placeholder="0x..."
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono text-sm"
               />
+              <p className="text-xs text-slate-400 mt-1">
+                Only the specified amount will be taken. Remaining SUI stays in your wallet.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Amount (SUI) *
+              </label>
+              <input
+                type="number"
+                value={budgetAmount}
+                onChange={(e) => setBudgetAmount(e.target.value)}
+                min="0"
+                step="0.000000001"
+                placeholder="e.g., 10.5"
+                className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Enter the amount to deposit into the budget (in SUI).
+              </p>
             </div>
 
             <button
@@ -221,7 +335,7 @@ export default function CreateRequestPage() {
         )}
 
         {/* Proposal Form */}
-        {(!userIsAdmin || !showBudgetForm) && (
+        {(!userIsAdmin || !showBudgetForm) && !successInfo && (
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-100">
               New Request
@@ -263,11 +377,15 @@ export default function CreateRequestPage() {
               <input
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                onChange={(e) => setAmount(e.target.value)}
                 min="0"
-                placeholder="Requested amount"
+                step="0.000000001"
+                placeholder="e.g., 0.5"
                 className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
+              <p className="text-xs text-slate-400 mt-1">
+                Enter any amount (e.g., 0.1, 0.5, 1.5 SUI).
+              </p>
             </div>
 
             {/* Receiver */}
