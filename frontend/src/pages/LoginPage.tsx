@@ -84,8 +84,8 @@ export default function LoginPage() {
                   onClick={() =>
                     connect({ wallet: googleWallet })
                   }
-                  variant="secondary"
-                  className="w-full bg-white/90 text-slate-900 hover:bg-white border-white/50"
+                  variant="light"
+                  className="w-full"
                   size="lg"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">

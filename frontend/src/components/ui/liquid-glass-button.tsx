@@ -2,7 +2,7 @@
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 interface LiquidButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost";
+  variant?: "primary" | "secondary" | "ghost" | "light";
   size?: "sm" | "md" | "lg";
 }
 
@@ -48,6 +48,12 @@ export const LiquidButton = forwardRef<HTMLButtonElement, LiquidButtonProps>(
         text-white
         border-white/10
         hover:bg-white/10 hover:border-white/20
+      `,
+      light: `
+        bg-white/90
+        text-slate-900
+        border-white/50
+        hover:bg-white hover:shadow-purple-500/10
       `,
     };
 
