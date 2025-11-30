@@ -6,8 +6,23 @@ import { MainLayout } from "../components/MainLayout";
 import { apiCreateProposal, apiCreateBudget } from "../api";
 import { isAdmin } from "../lib/adminCheck";
 
-// 1 SUI = 1,000,000,000 MIST
-const SUI_TO_MIST = 1_000_000_000;
+/**
+ * Convert SUI amount string to MIST (integer) avoiding floating-point precision issues.
+ * Handles up to 9 decimal places (SUI's precision).
+ * 1 SUI = 1,000,000,000 MIST
+ */
+function suiToMist(suiAmount: string): bigint {
+  const parts = suiAmount.split(".");
+  const integerPart = parts[0] || "0";
+  let decimalPart = parts[1] || "";
+  
+  // Pad or truncate decimal part to 9 digits (MIST precision)
+  decimalPart = decimalPart.padEnd(9, "0").slice(0, 9);
+  
+  // Combine integer and decimal parts as a single integer in MIST
+  const combined = integerPart + decimalPart;
+  return BigInt(combined);
+}
 
 type SuccessInfo = {
   type: "budget" | "proposal";
@@ -66,8 +81,8 @@ export default function CreateRequestPage() {
       return;
     }
 
-    // Convert SUI to MIST
-    const amountInMist = Math.floor(amountNum * SUI_TO_MIST);
+    // Convert SUI to MIST using string-based conversion to avoid floating-point precision issues
+    const amountInMist = Number(suiToMist(budgetAmount));
 
     try {
       setError(null);
@@ -122,8 +137,8 @@ export default function CreateRequestPage() {
       return;
     }
 
-    // Convert SUI to MIST for the proposal amount
-    const amountInMist = Math.floor(amountNum * SUI_TO_MIST);
+    // Convert SUI to MIST using string-based conversion to avoid floating-point precision issues
+    const amountInMist = Number(suiToMist(amount));
 
     try {
       setError(null);
