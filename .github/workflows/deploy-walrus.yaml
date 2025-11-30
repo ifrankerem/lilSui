@@ -1,0 +1,98 @@
+name: Deploy to Walrus Sites
+
+on:
+  push:
+    branches: [final]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node. js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm install
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Fix asset paths for Walrus
+        working-directory: ./frontend
+        run: |
+          sed -i 's|"/assets|"./assets|g' dist/index.html
+          sed -i 's|"/vite|"./vite|g' dist/index.html
+          echo "=== index.html content ==="
+          cat dist/index.html
+      
+      - name: Install Walrus CLI
+        run: |
+          curl -L https://storage.googleapis. com/mysten-walrus-binaries/walrus-testnet-latest-ubuntu-x86_64 -o walrus
+          chmod +x walrus
+          sudo mv walrus /usr/local/bin/
+          walrus --version
+      
+      - name: Install Site Builder
+        run: |
+          curl -L https://storage.googleapis.com/mysten-walrus-binaries/site-builder-testnet-latest-ubuntu-x86_64 -o site-builder
+          chmod +x site-builder
+          sudo mv site-builder /usr/local/bin/
+          site-builder --version
+      
+      - name: Setup Sui Wallet
+        env:
+          SUI_PRIVATE_KEY: ${{ secrets.SUI_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.sui/sui_config
+          echo "[\"$SUI_PRIVATE_KEY\"]" > ~/.sui/sui_config/sui.keystore
+          cat > ~/.sui/sui_config/client.yaml << 'EOF'
+          ---
+          keystore:
+            File: /home/runner/.sui/sui_config/sui.keystore
+          envs:
+            - alias: testnet
+              rpc: "https://fullnode.testnet.sui.io:443"
+          active_env: testnet
+          active_address: "0xea8ae94f8ff05578afe1ec7d5b55f30d864bf1f8411a39fe597fd755dbbfc41d"
+          EOF
+          echo "Sui wallet configured"
+      
+      - name: Setup Walrus Config
+        run: |
+          mkdir -p ~/. config/walrus
+          cat > ~/. config/walrus/client_config.yaml << 'EOF'
+          system_object: 0x6c2547cbbc38025cf9aff5a115ce2de05d184358e274ca032bd5bfa592a09880
+          staking_object: 0xbe46180321c30aab2f8b3501e24048377287fa708018a5b7c2792b35fe339ee3
+          exchange_objects: []
+          rpc_url: https://fullnode.testnet.sui.io:443
+          EOF
+          
+          cat > ~/.config/walrus/sites-config.yaml << 'EOF'
+          contexts:
+            testnet:
+              portal: "trwal.app"
+              package: "0xf99aee9f21493e1590e7e5a9aea6f343a1f381031a04a732724871fc294be799"
+              general:
+                wallet_env: "testnet"
+                walrus_context: "testnet"
+                walrus_binary: "walrus"
+                gas_budget: 500000000
+              staking_object: "0xbe46180321c30aab2f8b3501e24048377287fa708018a5b7c2792b35fe339ee3"
+          default_context: testnet
+          EOF
+          echo "Walrus configured"
+      
+      - name: Deploy to Walrus
+        working-directory: ./frontend
+        run: |
+          echo "=== Starting Walrus Deploy ==="
+          site-builder --config ~/.config/walrus/sites-config.yaml publish --epochs 10 --site-name Agora ./dist
