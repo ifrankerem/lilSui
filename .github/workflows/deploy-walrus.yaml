@@ -69,7 +69,7 @@ jobs:
       - name: Setup Walrus Config
         run: |
           mkdir -p ~/.config/walrus
-          cat > ~/. config/walrus/client_config.yaml << 'EOF'
+          cat > ~/.config/walrus/client_config.yaml << 'EOF'
           system_object: 0x6c2547cbbc38025cf9aff5a115ce2de05d184358e274ca032bd5bfa592a09880
           staking_object: 0xbe46180321c30aab2f8b3501e24048377287fa708018a5b7c2792b35fe339ee3
           exchange_objects: []
