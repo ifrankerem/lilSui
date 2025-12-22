@@ -29,6 +29,12 @@ The platform uses **Enoki** for gasless transactions (sponsored by the app) and 
 
 ---
 
+##  Youtube Demo Video
+
+https://www.youtube.com/watch?v=YEOlAbBSNcY
+
+---
+
 ## 🏗️ Architecture
 
 ```
